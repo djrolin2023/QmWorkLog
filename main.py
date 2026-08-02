@@ -26,8 +26,8 @@ if sys.platform == "win32" and not os.environ.get("QT_QPA_FONTDIR"):
         os.environ["QT_QPA_FONTDIR"] = win_fonts
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QLabel, QPushButton, QVBoxLayout,
-    QHBoxLayout, QFrame, QMenu, QSystemTrayIcon, QMessageBox, QStyle,
+    QApplication, QMainWindow, QWidget, QLabel, QVBoxLayout,
+    QMenu, QSystemTrayIcon, QMessageBox, QStyle,
     QInputDialog,
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
@@ -35,6 +35,16 @@ from PyQt5.QtGui import QIcon, QFont
 
 import system_info
 from flask_host import FlaskHost
+from ui_main import Ui_MainWindow
+
+
+def _place_in(placeholder, widget):
+    """将自绘控件塞进 .ui 预留的占位 QWidget（自定义控件无法在 Designer 中拖出）。"""
+    layout = QVBoxLayout(placeholder)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setAlignment(Qt.AlignCenter)
+    layout.addWidget(widget)
+
 
 # 本文件位于项目根目录（QmWorkLog），BASE 即根目录
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -480,185 +490,89 @@ class MainWindow(QMainWindow):
 
     # ---------------- UI 构建 ----------------
     def _build_ui(self):
-        self.setWindowTitle(f"乾明工作台账系统 V{self.version}")
+        # 从 Qt Designer 生成的 ui_main.py 加载静态布局
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
+
+        # 窗口图标
         win_icon = _first_existing(LOGO_PATH, FALLBACK_ICON)
         if win_icon:
             self.setWindowIcon(QIcon(win_icon))
-        self.resize(720, 600)
-        self.setFixedSize(720, 600)
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        root = QVBoxLayout(central)
-        root.setContentsMargins(18, 18, 18, 18)
-        root.setSpacing(14)
+        # 把 ui 中的控件引用挂到 self，方便后续逻辑访问
+        self.logo_label = self.ui.logo_label
+        self.addr_val = self.ui.addr_val
+        self.addr_val2 = self.ui.addr_val2
+        self.v4_val = self.ui.v4_val
+        self.v6_val = self.ui.v6_val
+        self.pid_label = self.ui.pid_label
+        self.time_label = self.ui.time_label
+        self.user_label = self.ui.user_label
+        self.uptime_label = self.ui.uptime_label
+        self.tip_label = self.ui.tip_label
+        self.btn_toggle = self.ui.btn_toggle
+        self.btn_restart = self.ui.btn_restart
+        self.btn_exit = self.ui.btn_exit
 
-        # ---- 标题头部 ----
-        head = QHBoxLayout()
-        self.logo_label = QLabel()
-        self.logo_label.setFixedSize(64, 64)
+        # 加载 LOGO（矢量优先 + DPR）
         self._load_logo()
-        self.title_label = QLabel("乾明工作台账系统")
-        self.title_label.setFont(QFont("Microsoft YaHei", 18, QFont.Bold))
-        # 版本号：贴在标题文字的右下角，明显小于标题（11px 浅灰）
-        self.ver_label = QLabel(f"V{self.version}")
-        self.ver_label.setFont(QFont("Microsoft YaHei", 11))
-        self.ver_label.setStyleSheet(
-            "color:#aaa;margin-left:6px;padding-bottom:2px;")
-        self.ver_label.setAlignment(Qt.AlignBottom)
-        title_box = QHBoxLayout()
-        title_box.setContentsMargins(0, 0, 0, 0)
-        title_box.setSpacing(0)
-        title_box.setAlignment(Qt.AlignBottom)
-        title_box.addWidget(self.title_label)
-        title_box.addWidget(self.ver_label)
-        head.addWidget(self.logo_label)
-        head.addLayout(title_box)
-        head.addStretch(1)
-        root.addLayout(head)
 
-        # ---- 系统访问地址（移除多余的「打开系统」按钮）----
-        addr_row = QHBoxLayout()
-        addr_lbl = QLabel("系统地址：")
-        addr_lbl.setStyleSheet("color:#555;")
-        self.addr_val = QLabel(SYSTEM_URL)
-        self.addr_val.setStyleSheet("font-weight:600;color:#1d8a4e;")
-        addr_row.addWidget(addr_lbl)
-        addr_row.addWidget(self.addr_val)
-        addr_row.addStretch(1)
-        root.addLayout(addr_row)
+        # 标题与版本号：重叠定位，版本号落在标题文字右下角
+        self._build_title_overlay()
 
-        # ---- 信息展示区（4 行：内网/局域网/外网IPv4/外网IPv6）----
-        info_frame = QFrame()
-        info_frame.setFrameShape(QFrame.StyledPanel)
-        info_layout = QVBoxLayout(info_frame)
-        info_layout.setSpacing(8)
-
-        self.addr_val2 = QLabel("获取中…")      # 登录地址：本机各真实网卡访问网址（可点击）
-        self.v4_val = QLabel("获取中…")         # 外网 IPv4（可点击）
-        self.v6_val = QLabel("获取中…")         # 外网 IPv6（可点击）
-        # 三个地址均设为可点击链接
+        # 地址标签：可点击链接样式
         for val in (self.addr_val2, self.v4_val, self.v6_val):
             val.setOpenExternalLinks(True)
             val.setTextInteractionFlags(Qt.TextBrowserInteraction)
             val.setStyleSheet("font-weight:600; color:#1a73e8;")
-        # 登录地址：多网卡时每个链接独立成行，去掉自动换行避免单网卡被挤成两行
         self.addr_val2.setWordWrap(False)
-        for name, val, stretch in [
-            ("登录地址：", self.addr_val2, False),
-            ("外网 IPv4：", self.v4_val, True),
-            ("外网 IPv6：", self.v6_val, True),
-        ]:
-            row = QHBoxLayout()
-            lbl = QLabel(name)
-            lbl.setFixedWidth(90)
-            lbl.setStyleSheet("color:#555;")
-            row.addWidget(lbl)
-            row.addWidget(val)
-            if stretch:
-                row.addStretch(1)
-            info_layout.addLayout(row)
-        root.addWidget(info_frame)
+        self.addr_val.setText(SYSTEM_URL)
 
-        # ---- 硬件监控（CPU / 内存 / 磁盘 环形饼图 + 网络流量心电图）----
-        hw_frame = QFrame()
-        hw_frame.setFrameShape(QFrame.StyledPanel)
-        hw_layout = QHBoxLayout(hw_frame)
-        hw_layout.setContentsMargins(14, 10, 14, 10)
-        hw_layout.setSpacing(20)
+        # ---- 硬件监控：把自绘控件塞进 .ui 预留的占位 QWidget ----
         self.cpu_gauge = GaugeWidget("CPU", color="#e67e22", size=76)
         self.mem_gauge = GaugeWidget("内存", color="#2980b9", size=76)
         self.disk_gauge = GaugeWidget("磁盘", color="#27ae60", size=76)
-        for gauge, title in (
-                (self.cpu_gauge, "CPU 占用"),
-                (self.mem_gauge, "内存占用"),
-                (self.disk_gauge, "磁盘占用")):
-            col = QVBoxLayout()
-            col.setSpacing(2)
-            col.setAlignment(Qt.AlignCenter)
-            col.addWidget(gauge)
-            t = QLabel(title)
-            t.setStyleSheet("color:#555;font-size:11px;")
-            t.setAlignment(Qt.AlignCenter)
-            col.addWidget(t)
-            hw_layout.addLayout(col)
-        # 网络流量：心电图 + 文字速率
-        net_col = QVBoxLayout()
-        net_col.setSpacing(3)
-        net_col.setAlignment(Qt.AlignCenter)
+        _place_in(self.ui.cpuPlaceholder, self.cpu_gauge)
+        _place_in(self.ui.memPlaceholder, self.mem_gauge)
+        _place_in(self.ui.diskPlaceholder, self.disk_gauge)
         self.heartbeat = HeartbeatWidget(width=160, height=52, max_points=60)
-        net_col.addWidget(self.heartbeat)
-        self.net_up_lbl = QLabel("↑ 0 KB/s")
-        self.net_down_lbl = QLabel("↓ 0 KB/s")
-        for lb in (self.net_up_lbl, self.net_down_lbl):
-            lb.setStyleSheet("color:#444;font-size:12px;font-weight:600;")
-            lb.setAlignment(Qt.AlignCenter)
-            net_col.addWidget(lb)
-        net_title = QLabel("网络流量")
-        net_title.setStyleSheet("color:#555;font-size:11px;")
-        net_title.setAlignment(Qt.AlignCenter)
-        net_col.addWidget(net_title)
-        hw_layout.addLayout(net_col)
-        hw_layout.addStretch(1)
-        root.addWidget(hw_frame)
+        _place_in(self.ui.netPlaceholder, self.heartbeat)
         # 网络采样基准（用于计算速率）
         self._net_io_last = None
         self._net_io_ts = 0.0
 
-        # ---- 进程 / 时间 / 账号 信息条 ----
-        proc_frame = QFrame()
-        proc_frame.setFrameShape(QFrame.StyledPanel)
-        proc_layout = QHBoxLayout(proc_frame)
-        proc_layout.setSpacing(24)
-        self.pid_label = QLabel(f"进程 PID：{os.getpid()}")
-        self.time_label = QLabel("时间：--")
-        self.user_label = QLabel("账号：--")
-        for lb in (self.pid_label, self.time_label, self.user_label):
-            lb.setStyleSheet("color:#444;font-size:13px;font-weight:600;")
-            proc_layout.addWidget(lb)
-        proc_layout.addStretch(1)
+        # 进程信息
+        self.pid_label.setText(f"进程 PID：{os.getpid()}")
         self._load_current_user()   # 读取系统账号
-        root.addWidget(proc_frame)
 
-        # ---- 运行时长 ----
-        self.uptime_label = QLabel("系统已运行：0 天 0 小时 0 分 0 秒")
-        self.uptime_label.setStyleSheet(
-            "color:#444;font-size:15px;font-weight:600;")
-        root.addWidget(self.uptime_label)
-
-        # ---- 最小化提示（明确告知关闭窗口不退出程序）----
-        self.tip_label = QLabel(
-            "提示：关闭本窗口将最小化到系统托盘，程序继续运行，不会退出；"
-            "如需完全退出请点击「退出程序」。")
-        self.tip_label.setStyleSheet(
-            "color:#b06a00;font-size:14px;background:#fff7e6;"
-            "padding:6px 10px;border-radius:6px;")
-        self.tip_label.setWordWrap(True)
-        root.addWidget(self.tip_label)
-
-        root.addStretch(1)
-
-        # ---- 功能按钮组（二态切换 / 重启系统 / 退出），重启系统居中 ----
-        btn_row = QHBoxLayout()
-        btn_row.addStretch(1)
-        self.btn_restart = QPushButton("重启系统")
-        self.btn_toggle = QPushButton("停止服务")  # 运行中时显示"停止服务"
-        self.btn_exit = QPushButton("退出程序")
-        for b in (self.btn_restart, self.btn_toggle, self.btn_exit):
-            b.setFixedSize(120, 42)
-            b.setCursor(Qt.PointingHandCursor)
+        # 按钮信号
         self.btn_restart.clicked.connect(self.restart_service)
         self.btn_toggle.clicked.connect(self.toggle_service)
         self.btn_exit.clicked.connect(self.confirm_exit)
-        btn_row.addWidget(self.btn_toggle)
-        btn_row.addSpacing(10)
-        btn_row.addWidget(self.btn_restart)   # 居中
-        btn_row.addSpacing(10)
-        btn_row.addWidget(self.btn_exit)
-        btn_row.setAlignment(Qt.AlignRight)
-        root.addLayout(btn_row)
+        for b in (self.btn_restart, self.btn_toggle, self.btn_exit):
+            b.setCursor(Qt.PointingHandCursor)
 
         self._apply_style()
+
+    def _build_title_overlay(self):
+        """标题与版本号重叠定位：版本号绝对定位在标题文字右下角。
+
+        容器 title_box 在 .ui 中尺寸固定 360x64，标题与版本号
+        用 move() 绝对定位，版本号（11px 浅灰）落在标题基线右下。
+        """
+        box = self.ui.title_box
+        self.title_label = QLabel("乾明工作台账系统", box)
+        self.title_label.setFont(QFont("Microsoft YaHei", 18, QFont.Bold))
+        self.title_label.adjustSize()
+        self.title_label.move(0, (64 - self.title_label.height()) // 2)
+        self.ver_label = QLabel(f"V{self.version}", box)
+        self.ver_label.setFont(QFont("Microsoft YaHei", 11))
+        self.ver_label.setStyleSheet("color:#aaa;")
+        self.ver_label.adjustSize()
+        self.ver_label.move(
+            self.title_label.x() + self.title_label.width(),
+            self.title_label.y() + self.title_label.height()
+            - self.ver_label.height() - 1)
 
     def _load_logo(self):
         # 优先用矢量 SVG，任意尺寸都清晰；其次用 ICO

@@ -1,0 +1,722 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>720</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>乾明工作台账系统</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>720</width>
+    <height>600</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>720</width>
+    <height>600</height>
+   </size>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="root">
+    <property name="leftMargin">
+     <number>18</number>
+    </property>
+    <property name="topMargin">
+     <number>18</number>
+    </property>
+    <property name="rightMargin">
+     <number>18</number>
+    </property>
+    <property name="bottomMargin">
+     <number>18</number>
+    </property>
+    <property name="spacing">
+     <number>14</number>
+    </property>
+
+    <!-- 标题头部：logo + 标题/版本号重叠容器 -->
+    <item>
+     <layout class="QHBoxLayout" name="head">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="logo_label">
+        <property name="minimumSize">
+         <size>
+          <width>64</width>
+          <height>64</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>64</width>
+          <height>64</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>QM</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="title_box" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>360</width>
+          <height>64</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>360</width>
+          <height>64</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="head_spacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+
+    <!-- 系统访问地址 -->
+    <item>
+     <layout class="QHBoxLayout" name="addr_row">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="addr_lbl">
+        <property name="text">
+         <string>系统地址：</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color:#555;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="addr_val">
+        <property name="text">
+         <string>http://127.0.0.1:8088</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">font-weight:600;color:#1d8a4e;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="addr_spacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+
+    <!-- 信息展示区：登录地址 / 外网IPv4 / 外网IPv6 -->
+    <item>
+     <widget class="QFrame" name="info_frame">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <layout class="QVBoxLayout" name="info_layout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <layout class="QHBoxLayout" name="info_row_1">
+         <item>
+          <widget class="QLabel" name="addr2_name">
+           <property name="minimumSize">
+            <size>
+             <width>90</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>90</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>登录地址：</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#555;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="addr_val2">
+           <property name="text">
+            <string>获取中…</string>
+           </property>
+           <property name="wordWrap">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="info_row_2">
+         <item>
+          <widget class="QLabel" name="v4_name">
+           <property name="minimumSize">
+            <size>
+             <width>90</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>90</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>外网 IPv4：</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#555;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="v4_val">
+           <property name="text">
+            <string>获取中…</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="info_row_2_spacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="info_row_3">
+         <item>
+          <widget class="QLabel" name="v6_name">
+           <property name="minimumSize">
+            <size>
+             <width>90</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>90</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>外网 IPv6：</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#555;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="v6_val">
+           <property name="text">
+            <string>获取中…</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="info_row_3_spacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+    <!-- 硬件监控区：CPU/内存/磁盘 占位 + 网络流量占位 -->
+    <item>
+     <widget class="QFrame" name="hw_frame">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <layout class="QHBoxLayout" name="hw_layout">
+       <property name="leftMargin">
+        <number>14</number>
+       </property>
+       <property name="topMargin">
+        <number>10</number>
+       </property>
+       <property name="rightMargin">
+        <number>14</number>
+       </property>
+       <property name="bottomMargin">
+        <number>10</number>
+       </property>
+       <property name="spacing">
+        <number>20</number>
+       </property>
+       <item>
+        <layout class="QVBoxLayout" name="cpu_col">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <item>
+          <widget class="QWidget" name="cpuPlaceholder" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>76</width>
+             <height>76</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>76</width>
+             <height>76</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="cpu_title">
+           <property name="text">
+            <string>CPU 占用</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#555;font-size:11px;</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="mem_col">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <item>
+          <widget class="QWidget" name="memPlaceholder" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>76</width>
+             <height>76</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>76</width>
+             <height>76</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="mem_title">
+           <property name="text">
+            <string>内存占用</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#555;font-size:11px;</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="disk_col">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <item>
+          <widget class="QWidget" name="diskPlaceholder" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>76</width>
+             <height>76</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>76</width>
+             <height>76</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="disk_title">
+           <property name="text">
+            <string>磁盘占用</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#555;font-size:11px;</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="net_col">
+         <property name="spacing">
+          <number>3</number>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+         <item>
+          <widget class="QWidget" name="netPlaceholder" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>160</width>
+             <height>52</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>160</width>
+             <height>52</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="net_up_lbl">
+           <property name="text">
+            <string>↑ 0 KB/s</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#444;font-size:12px;font-weight:600;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="net_down_lbl">
+           <property name="text">
+            <string>↓ 0 KB/s</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#444;font-size:12px;font-weight:600;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="net_title">
+           <property name="text">
+            <string>网络流量</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">color:#555;font-size:11px;</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="hw_spacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+    <!-- 进程/时间/账号 信息条 -->
+    <item>
+     <widget class="QFrame" name="proc_frame">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <layout class="QHBoxLayout" name="proc_layout">
+       <property name="spacing">
+        <number>24</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="pid_label">
+         <property name="text">
+          <string>进程 PID：--</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color:#444;font-size:13px;font-weight:600;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="time_label">
+         <property name="text">
+          <string>时间：--</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color:#444;font-size:13px;font-weight:600;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="user_label">
+         <property name="text">
+          <string>账号：--</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color:#444;font-size:13px;font-weight:600;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="proc_spacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+    <!-- 运行时长 -->
+    <item>
+     <widget class="QLabel" name="uptime_label">
+      <property name="text">
+       <string>系统已运行：0 天 0 小时 0 分 0 秒</string>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color:#444;font-size:15px;font-weight:600;</string>
+      </property>
+     </widget>
+    </item>
+
+    <!-- 最小化提示 -->
+    <item>
+     <widget class="QLabel" name="tip_label">
+      <property name="text">
+       <string>提示：关闭本窗口将最小化到系统托盘，程序继续运行，不会退出；如需完全退出请点击「退出程序」。</string>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color:#b06a00;font-size:14px;background:#fff7e6;padding:6px 10px;border-radius:6px;</string>
+      </property>
+     </widget>
+    </item>
+
+    <item>
+     <spacer name="mid_spacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>40</height>
+       </size>
+      </property>
+     </spacer>
+    </item>
+
+    <!-- 功能按钮组 -->
+    <item>
+     <layout class="QHBoxLayout" name="btn_row">
+      <item>
+       <spacer name="btn_left_spacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_toggle">
+        <property name="minimumSize">
+         <size>
+          <width>120</width>
+          <height>42</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>120</width>
+          <height>42</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>停止服务</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="btn_mid1_spacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>10</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_restart">
+        <property name="minimumSize">
+         <size>
+          <width>120</width>
+          <height>42</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>120</width>
+          <height>42</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>重启系统</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="btn_mid2_spacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Fixed</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>10</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_exit">
+        <property name="minimumSize">
+         <size>
+          <width>120</width>
+          <height>42</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>120</width>
+          <height>42</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>退出程序</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
