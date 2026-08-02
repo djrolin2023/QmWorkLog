@@ -90,16 +90,24 @@ python app.py
 
 > PyInstaller **不能跨平台打包**：在哪个系统上运行，就只能打出该平台的包。跨平台安装逻辑已抽象在 `install_utils.py`（快捷方式 / 启动入口按 Windows / macOS / Linux 分支处理）。
 
-### Windows（.exe 安装包）
+### Windows（.exe 主程序）
+
+在已激活的虚拟环境中执行：
 
 ```bat
-build_installer.bat
+pyinstaller --noconfirm --onefile --windowed ^
+    --name QmWorkLog_v%QM_VER% ^
+    --icon "static\Images\logo.ico" ^
+    --add-data "static;static" ^
+    --add-data "templates;templates" ^
+    --add-data "version.json;." ^
+    --hidden-import app --hidden-import db --hidden-import config ^
+    --hidden-import docx_utils --hidden-import system_info ^
+    main.py
 ```
 
-产物（自动带版本号，例如 `26.08.02.105`）：
-
-- `QmWorkLog_v<ver>.exe` — 程序本体，老用户直接覆盖即可；
-- `QmWorkLog_Setup_v<ver>.exe` — 内置安装向导（许可协议 → 默认 `D:\QmWorkLog` → 释放程序 + 建快捷方式）。
+产物 `QmWorkLog_v<ver>.exe`（自动带版本号）即程序本体，老用户直接覆盖即可。
+> 说明：本项目不再提供内置安装向导（`QmWorkLog_Setup*.exe`），跨平台分发请使用下方的 `.deb` / `.dmg`。
 
 ### Linux（.deb）
 
