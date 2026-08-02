@@ -92,17 +92,38 @@ def create_desktop_shortcut(exe_path, work_dir, icon_path=None, name=APP_NAME):
 #   注：powershell -Command 传递含括号的脚本易解析失败，故改为写入临时
 #   .ps1 文件后用 powershell -File 执行，稳定可靠。
 # --------------------------------------------------------------------------
-def _user_desktop_path():
-    """返回当前登录用户的桌面真实路径（兼容 UAC 提权/特殊环境）。
+def _real_user_desktop():
+    """返回「当前交互登录用户」的桌面真实路径。
+
+    用户的用户配置文件可能被重定向到非系统盘（例如本机 Desktop 实际在
+    D:\\Users\\Administrator\\Desktop，而 USERPROFILE 仍是 C:\\Users\\Administrator）。
+    因此不能简单拼 C:\\Users\\<user>\\Desktop，必须以注册表 / Shell API 中的
+    权威桌面路径为准。
 
     优先级：
-      1) SHGetKnownFolderPath(FOLDERID_Desktop) 取真实桌面；
-      2) USERPROFILE/Desktop；
-      3) 枚举 C:\\Users\\*\\Desktop 找第一个存在的用户桌面；
-      4) C:\\Users\\Public\\Desktop（公共桌面，所有用户可见）。
-    若都找不到则返回 USERPROFILE/Desktop（即便不存在，由上层报错提示）。
+      1) 注册表 HKCU\\...\\User Shell Folders\\Desktop（系统权威，可能为 D: 盘）；
+      2) SHGetKnownFolderPath(FOLDERID_Desktop)（提权下可能不准，作兜底）；
+      3) WTS 取会话用户后拼 C:\\Users\\<user>\\Desktop；
+      4) USERPROFILE/Desktop；
+      5) 枚举 C:\\Users\\*\\Desktop（排除系统账户）；
+      6) 以上都没有则创建 USERPROFILE/Desktop。
     """
-    # 1) SHGetKnownFolderPath
+    # 1) 注册表权威桌面路径（最可靠，能正确返回被重定向到 D: 的桌面）
+    try:
+        import winreg
+        with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer"
+                r"\User Shell Folders") as k:
+            val, _ = winreg.QueryValueEx(k, "Desktop")
+        if val:
+            # 支持 %USERPROFILE% 等环境变量展开
+            val = os.path.expandvars(val)
+            if os.path.isdir(val):
+                return val
+    except Exception:
+        pass
+    # 2) SHGetKnownFolderPath（提权进程可能回退到 C:，但仍是系统 API）
     try:
         FOLDERID_Desktop = "{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}"
         if hasattr(ctypes.windll, "shcore"):
@@ -116,31 +137,54 @@ def _user_desktop_path():
                     return buf
     except Exception:
         pass
-    # 2) USERPROFILE/Desktop
+    # 3) WTS 取当前会话登录用户，拼 C:\Users\<user>\Desktop
+    try:
+        WTS_CURRENT_SERVER_HANDLE = 0
+        WTS_CURRENT_SESSION = -1
+        buf = ctypes.c_void_p()
+        bytes_ret = ctypes.c_ulong()
+        if ctypes.windll.wtsapi32.WTSQuerySessionInformationW(
+                WTS_CURRENT_SERVER_HANDLE, WTS_CURRENT_SESSION, 5,  # 5 = WTSUserName
+                ctypes.byref(buf), ctypes.byref(bytes_ret)):
+            user = ctypes.cast(buf, ctypes.c_wchar_p).value
+            ctypes.windll.wtsapi32.WTSFreeMemory(buf)
+            if user:
+                cand = os.path.join(r"C:\Users", user, "Desktop")
+                if os.path.isdir(cand):
+                    return cand
+    except Exception:
+        pass
+    # 4) USERPROFILE/Desktop
     base = os.environ.get("USERPROFILE") or os.path.expanduser("~")
     desk = os.path.join(base, "Desktop")
-    # 不回退到公共桌面（C:\Users\Public\Desktop 受 UAC 写保护，
-    # 即使以管理员运行也可能 Save 失败）。优先保证用户桌面可写。
     if os.path.isdir(desk):
         return desk
-    # 3) 枚举 C:\Users\*\Desktop 找第一个存在的用户桌面
+    # 5) 枚举 C:\Users\*\Desktop 找第一个真实用户桌面（排除 Public）
     users_root = r"C:\Users"
     if os.path.isdir(users_root):
         for u in os.listdir(users_root):
+            if u.lower() in ("public", "all users", "default", "default user"):
+                continue
             cand = os.path.join(users_root, u, "Desktop")
             if os.path.isdir(cand):
                 return cand
-    # 4) 用户桌面不存在则创建它（保证可写，避免公共桌面权限问题）
+    # 6) 用户桌面不存在则创建它（保证可写）
     try:
         os.makedirs(desk, exist_ok=True)
         return desk
     except Exception:
         pass
     return desk
+    return desk
+
+
+def _user_desktop_path():
+    """兼容旧调用：返回当前登录用户的桌面真实路径。"""
+    return _real_user_desktop()
 
 
 def _guid(s):
-    """把 GUID 字符串转成 ctypes 结构（供 SHGetKnownFolderPath 使用）。"""
+    """把 GUID 字符串转成 ctypes 结构（供 IShellLink/IPersistFile 使用）。"""
     class _G(ctypes.Structure):
         _fields_ = [("Data1", ctypes.c_ulong), ("Data2", ctypes.c_ushort),
                     ("Data3", ctypes.c_ushort), ("Data4", ctypes.c_byte * 8)]
@@ -155,89 +199,146 @@ def _guid(s):
     return g
 
 
-def _build_ps1(link_path, target, work_dir, desc, icon):
-    """生成创建单个 .lnk 的 PowerShell 脚本文本。"""
-    def esc(s):
-        return (s or "").replace("'", "''")
-    lines = [
-        "$ErrorActionPreference = 'Stop'",
-        "$ws = New-Object -ComObject WScript.Shell",
-        "$sc = $ws.CreateShortcut('%s')" % esc(link_path),
-        "$sc.TargetPath = '%s'" % esc(target),
-        "$sc.WorkingDirectory = '%s'" % esc(work_dir),
-        "$sc.Description = '%s'" % esc(desc),
-    ]
-    if icon:
-        lines.append("$sc.IconLocation = '%s'" % esc(icon))
-    lines.append("$sc.Save()")
-    return "\n".join(lines)
+# ---- IShellLink 相关 COM 接口 GUID / 接口 ----
+_CLSID_ShellLink = _guid("{00021401-0000-0000-C000-000000000046}")
+_IID_IShellLinkW = _guid("{000214F9-0000-0000-C000-000000000046}")
+_IID_IPersistFile = _guid("{0000010B-0000-0000-C000-000000000046}")
 
 
-def _run_powershell_file(script):
-    """把脚本写入临时 .ps1 并执行，返回 (success, stderr)。"""
-    import tempfile
-    fd, path = tempfile.mkstemp(suffix=".ps1", prefix="qm_sc_")
+class _IShellLinkW(ctypes.Structure):
+    _fields_ = [("lpVtbl", ctypes.c_void_p)]
+
+
+class _IPersistFile(ctypes.Structure):
+    _fields_ = [("lpVtbl", ctypes.c_void_p)]
+
+
+# COM 初始化引用计数：同一进程内多次创建快捷方式时，
+# 只初始化一次、不重复 CoUninitialize，避免套间状态被破坏。
+_COM_INIT_COUNT = 0
+
+
+def _com_init():
+    global _COM_INIT_COUNT
+    # COINIT_APARTMENTTHREADED = 0x2（IShellLink 需 STA）
+    hr = ctypes.windll.ole32.CoInitializeEx(0, 0x2)
+    if hr == 0 or hr & 0xFFFFFFFF == 0x00000001:  # S_OK 或 S_FALSE(已初始化)
+        _COM_INIT_COUNT += 1
+        return True
+    return False
+
+
+def _com_uninit():
+    global _COM_INIT_COUNT
+    if _COM_INIT_COUNT > 0:
+        ctypes.windll.ole32.CoUninitialize()
+        _COM_INIT_COUNT -= 1
+
+
+def _create_lnk(link_path, target, work_dir, desc, icon):
+    """用 ctypes 直接调用 IShellLink 创建 .lnk（不依赖 PowerShell / WScript.Shell）。
+
+    返回 True/False。相比 WScript.Shell COM，IShellLink 在提权进程下
+    行为更可控，且能直接指定写入路径，避免 Save 重定向导致的失败。
+    """
+    # 清掉同名旧文件，确保 Save 真正写入（避免误判 exists）
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(script)
-        r = subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy",
-             "Bypass", "-File", path],
-            capture_output=True, text=True, timeout=60)
-        return r.returncode == 0, (r.stderr or r.stdout)
-    except Exception as e:
-        return False, str(e)
+        if os.path.exists(link_path):
+            os.remove(link_path)
+    except Exception:
+        pass
+    try:
+        if not _com_init():
+            return False
+        psl = ctypes.POINTER(_IShellLinkW)()
+        if ctypes.windll.ole32.CoCreateInstance(
+                ctypes.byref(_CLSID_ShellLink), 0, 1,  # CLSCTX_INPROC_SERVER
+                ctypes.byref(_IID_IShellLinkW),
+                ctypes.byref(psl)) != 0:
+            return False
+        psl_addr = ctypes.cast(psl, ctypes.c_void_p).value
+        vtbl = ctypes.cast(psl.contents.lpVtbl, ctypes.POINTER(ctypes.c_void_p * 20)).contents
+
+        # IShellLinkW 虚表顺序（继承 IUnknown 前 3 个）：
+        # 0 QueryInterface, 1 AddRef, 2 Release
+        # 3 GetPath, 4 GetIDList, 5 SetPath, 6 SetDescription,
+        # 7 SetIDList, 8 SetRelativePath, 9 SetWorkingDirectory,
+        # 10 SetArguments, 11 SetIconLocation, 12 SetShowCmd, ...
+        # 均为 WINAPI（stdcall），必须用 WINFUNCTYPE
+        SetPath = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p)(
+            vtbl[5])
+        SetDescription = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p)(
+            vtbl[6])
+        SetWorkingDirectory = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p)(
+            vtbl[9])
+        SetIconLocation = ctypes.WINFUNCTYPE(
+            ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_int)(
+            vtbl[11])
+
+        SetPath(psl_addr, target)
+        SetDescription(psl_addr, desc or "")
+        SetWorkingDirectory(psl_addr, work_dir or "")
+        if icon:
+            SetIconLocation(psl_addr, icon, 0)
+
+        # 取 IPersistFile 保存
+        ppf = ctypes.POINTER(_IPersistFile)()
+        QueryInterface = ctypes.WINFUNCTYPE(
+            ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)(
+            vtbl[0])
+        if QueryInterface(psl_addr, ctypes.byref(_IID_IPersistFile),
+                          ctypes.byref(ppf)) != 0:
+            return False
+        ppf_vtbl = ctypes.cast(ppf.contents.lpVtbl, ctypes.POINTER(ctypes.c_void_p * 8)).contents
+        Save = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_int)(
+            ppf_vtbl[6])  # 6 = IPersistFile.Save
+        hr = Save(ctypes.cast(ppf, ctypes.c_void_p).value, link_path, 1)
+        return hr == 0 and os.path.exists(link_path)
+    except Exception:
+        return False
     finally:
-        try:
-            os.remove(path)
-        except Exception:
-            pass
+        _com_uninit()
 
 
 def _create_desktop_windows(exe_path, work_dir, icon_path, name):
     if not exe_path.lower().endswith(".exe"):
         raise RuntimeError("仅支持 .exe 创建 Windows 快捷方式")
-    desktop = _user_desktop_path()
+    desktop = _real_user_desktop()
     if not os.path.isdir(desktop):
         raise RuntimeError("未找到桌面目录：%s" % desktop)
     link = os.path.join(desktop, "%s.lnk" % name)
     icon = icon_path if (icon_path and os.path.exists(icon_path)) else None
-    ok, err = _run_powershell_file(_build_ps1(link, exe_path, work_dir, name, icon))
-    if not ok or not os.path.exists(link):
-        raise RuntimeError("创建桌面快捷方式失败：%s\n%s" % (link, err))
+    if not _create_lnk(link, exe_path, work_dir, name, icon):
+        raise RuntimeError("创建桌面快捷方式失败：%s" % link)
     return [link]
 
 
 def _create_shortcuts_windows(exe_path, work_dir, icon_path, name):
     if not exe_path.lower().endswith(".exe"):
         return []
-    desktop = _user_desktop_path()
-    # 开始菜单：优先公共（PROGRAMDATA），失败回退当前用户，再失败则跳过
-    start_menu_common = os.path.join(
-        os.environ.get("PROGRAMDATA", r"C:\ProgramData"),
-        "Microsoft", "Windows", "Start Menu", "Programs")
+    desktop = _real_user_desktop()
+    # 开始菜单：优先当前用户（APPDATA），再试公共（PROGRAMDATA），均失败不致命
     start_menu_user = os.path.join(
         os.environ.get("APPDATA", ""),
+        "Microsoft", "Windows", "Start Menu", "Programs")
+    start_menu_common = os.path.join(
+        os.environ.get("PROGRAMDATA", r"C:\ProgramData"),
         "Microsoft", "Windows", "Start Menu", "Programs")
     icon = icon_path if (icon_path and os.path.exists(icon_path)) else None
 
     created = []
-    # 桌面快捷方式必须成功（用户桌面一定可写）
+    # 桌面快捷方式（落到真实登录用户桌面，必成功）
     if os.path.isdir(desktop):
         link = os.path.join(desktop, "%s.lnk" % name)
-        ok, err = _run_powershell_file(
-            _build_ps1(link, exe_path, work_dir, name, icon))
-        if ok and os.path.exists(link):
+        if _create_lnk(link, exe_path, work_dir, name, icon) and os.path.exists(link):
             created.append(link)
-    # 开始菜单：先试公共，失败再试用户，都不行也不致命
-    for sm in (start_menu_common, start_menu_user):
+    # 开始菜单：先用户后公共，都不行也不致命
+    for sm in (start_menu_user, start_menu_common):
         if not sm or not os.path.isdir(sm):
             continue
         link = os.path.join(sm, "%s.lnk" % name)
         try:
-            ok, err = _run_powershell_file(
-                _build_ps1(link, exe_path, work_dir, name, icon))
-            if ok and os.path.exists(link):
+            if _create_lnk(link, exe_path, work_dir, name, icon) and os.path.exists(link):
                 created.append(link)
                 break
         except Exception:

@@ -1,7 +1,7 @@
 {
   "date": "26.08.02",
-  "seq": 109,
-  "version": "26.08.02.109",
+  "seq": 110,
+  "version": "26.08.02.110",
   "history": [
     {
       "date": "26.08.01",
@@ -320,6 +320,12 @@
       "ver": "26.08.02.109",
       "type": "minor",
       "reason": "修复 Windows 快捷方式创建失败：桌面快捷方式强制落在当前用户桌面(避开UAC保护的公共桌面)，开始菜单创建失败不再致命；移除安装向导"
+    },
+    {
+      "date": "26.08.02",
+      "ver": "26.08.02.110",
+      "type": "minor",
+      "reason": "彻底修复快捷方式创建失败：改用 ctypes IShellLink(替代 WScript.Shell COM，修复提权进程 Save 失败)，COM 初始化改为进程级引用计数避免重复调用崩溃；桌面路径优先读取注册表 User Shell Folders(正确处理用户配置文件重定向到 D: 盘的真实桌面，如 D:\\Users\\Administrator\\Desktop)"
     }
   ]
 }
