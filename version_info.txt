@@ -1,0 +1,30 @@
+# UTF-8
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(26, 8, 3, 100),
+    prodvers=(26, 8, 3, 100),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+      StringTable(
+        u'040904B0',
+        [StringStruct(u'CompanyName', u'乾明'),
+         StringStruct(u'FileDescription', u'乾明工作台账系统'),
+         StringStruct(u'FileVersion', u'26.8.3.100'),
+         StringStruct(u'InternalName', u'QmWorkLog'),
+         StringStruct(u'LegalCopyright', u'Copyright © 乾明'),
+         StringStruct(u'OriginalFilename', u'QmWorkLog.exe'),
+         StringStruct(u'ProductName', u'乾明工作台账系统'),
+         StringStruct(u'ProductVersion', u'26.8.3.100')])
+      ]
+    ),
+    VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
+  ]
+)

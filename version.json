@@ -1,7 +1,7 @@
 {
-  "date": "26.08.02",
-  "seq": 110,
-  "version": "26.08.02.110",
+  "date": "26.08.03",
+  "seq": 100,
+  "version": "26.08.03.100",
   "history": [
     {
       "date": "26.08.01",
@@ -326,6 +326,12 @@
       "ver": "26.08.02.110",
       "type": "minor",
       "reason": "彻底修复快捷方式创建失败：改用 ctypes IShellLink(替代 WScript.Shell COM，修复提权进程 Save 失败)，COM 初始化改为进程级引用计数避免重复调用崩溃；桌面路径优先读取注册表 User Shell Folders(正确处理用户配置文件重定向到 D: 盘的真实桌面，如 D:\\Users\\Administrator\\Desktop)"
+    },
+    {
+      "date": "26.08.03",
+      "ver": "26.08.03.1",
+      "type": "minor",
+      "reason": "修正图标与版本号：1)应用图标改用正确的 logo.svg 矢量(经 chromium 渲染)生成多尺寸高清 ICO(16/32/48/64/128/256)，替换原先误用 company_logo.png 且单尺寸模糊的 logo.ico；PyInstaller 打包加 --icon 使 exe 显示正确图标、加 --version-file 注入正确的文件版本信息；2)修正版本号日期为今日 26.08.03，跨天 seq 重置为 100(此前误用 26.08.02 与 seq=1)"
     }
   ]
 }
