@@ -1,7 +1,7 @@
 {
   "date": "26.08.02",
-  "seq": 104,
-  "version": "26.08.02.104",
+  "seq": 105,
+  "version": "26.08.02.105",
   "history": [
     {
       "date": "26.08.01",
@@ -290,6 +290,12 @@
       "ver": "26.08.02.104",
       "type": "minor",
       "reason": "修复重启系统按钮无交互：重启时禁用按钮并显示'重启中...'即时反馈，改为轮询等待端口真正释放后再启动(取代固定0.8s盲等)，防止新进程因端口占用启动失败"
+    },
+    {
+      "date": "26.08.02",
+      "ver": "26.08.02.105",
+      "type": "minor",
+      "reason": "新增内置安装向导打包方案: installer.py(Qt向导 许可协议/默认路径D:\\\\QmWorkLog/快捷方式) + build_installer.bat; 修复PyInstaller单文件模式EXE_DIR用argv[0]避免用户数据落入临时目录; 新增MIT风格中文许可协议LICENSE_INSTALL.txt"
     }
   ]
 }

@@ -259,14 +259,16 @@ def _first_existing(*paths):
 
 
 def _app_exe_path():
-    """返回当前可执行文件路径。
+    """返回当前可执行文件的真实安装路径。
 
-    打包成 EXE 时 sys.executable 即为 exe 完整路径；
-    脚本方式运行时回退为 main.py（仅用于非 EXE 调试，
-    不会真正创建快捷方式，见 create_shortcuts_once 内的判断）。
+    打包成 EXE 时，PyInstaller 单文件会把 exe 解压到临时目录 _MEIPASS 运行，
+    sys.executable 指向该临时副本（进程退出后即被删除），
+    因此优先用 sys.argv[0] 取用户实际启动的 exe 真实路径，
+    回退到 sys.executable。脚本方式运行时回退为 main.py（仅用于非 EXE 调试）。
     """
     if getattr(sys, "frozen", False):
-        return os.path.abspath(sys.executable)
+        p = sys.argv[0] if sys.argv and sys.argv[0] else sys.executable
+        return os.path.abspath(p)
     return os.path.abspath(sys.argv[0])
 
 

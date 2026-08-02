@@ -12,8 +12,12 @@ import sys
 FROZEN = getattr(sys, "frozen", False)
 
 if FROZEN:
-    EXE_DIR = os.path.dirname(os.path.abspath(sys.executable))
-    # PyInstaller 单文件会把 --add-data 的资源释放到临时目录 _MEIPASS
+    # PyInstaller 单文件会把 exe 解压到临时目录 _MEIPASS 运行，
+    # 此时 sys.executable 指向临时目录里的副本，不能用于定位安装目录，
+    # 否则用户数据(Data/DB/users.json/config.json)会被写到临时目录而丢失。
+    # 用 sys.argv[0] 取用户实际启动的 exe 真实路径作为数据根目录。
+    EXE_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+    # 静态资源由 PyInstaller 释放到临时目录 _MEIPASS
     RES_DIR = getattr(sys, "_MEIPASS", EXE_DIR)
 else:
     EXE_DIR = os.path.dirname(os.path.abspath(__file__))
