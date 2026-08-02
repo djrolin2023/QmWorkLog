@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "F:\Python\venv\QmWorkLog-venv\Scripts\pyqt5-tools.exe\__main__.py", line 4, in <module>
-  File "F:\Python\venv\QmWorkLog-venv\Lib\site-packages\pyqt5_tools\__init__.py", line 7, in <module>
-    import pkg_resources
-ModuleNotFoundError: No module named 'pkg_resources'
