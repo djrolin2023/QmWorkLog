@@ -981,18 +981,24 @@ class MainWindow(QMainWindow):
         self.user_label.setText("账号：--")
 
     def _poll_current_user(self):
-        """每 5 秒轮询 Flask 后端 /api/current_user 获取真正当前登录用户。"""
-        try:
-            url = f"http://{FLASK_HOST}:{FLASK_PORT}/api/current_user"
-            with urllib.request.urlopen(url, timeout=3) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            user = data.get("user")
-            if user:
-                self.user_label.setText(f"账号：{user}")
-            else:
-                self.user_label.setText("账号：未登录")
-        except Exception:
-            pass
+        """每 5 秒轮询 Flask 后端 /api/current_user 获取真正当前登录用户。
+
+        网络请求在后台线程执行，避免服务未就绪时同步阻塞 UI 主线程
+        （之前在 GUI 线程用 urllib 请求，服务停止/启动瞬间会卡约 3 秒）。
+        """
+        def _worker():
+            try:
+                url = f"http://{FLASK_HOST}:{FLASK_PORT}/api/current_user"
+                with urllib.request.urlopen(url, timeout=3) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                user = data.get("user")
+                text = f"账号：{user}" if user else "账号：未登录"
+            except Exception:
+                text = "账号：未登录"
+            # 切回主线程更新标签
+            QTimer.singleShot(0, lambda: self.user_label.setText(text))
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     # ---------------- 窗口关闭/最小化 -> 托盘 ----------------
     def closeEvent(self, event):
