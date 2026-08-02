@@ -109,9 +109,20 @@ pyinstaller --noconfirm --onefile --windowed ^
 产物 `QmWorkLog_v<ver>.exe`（自动带版本号）即程序本体，老用户直接覆盖即可。
 > 说明：本项目不再提供内置安装向导（`QmWorkLog_Setup*.exe`），跨平台分发请使用下方的 `.deb` / `.dmg`。
 
-### Linux（.deb）
+### Linux（一键安装，推荐）
 
-在 Debian/Ubuntu 本机执行：
+无需手动打包，一条命令完成 clone + 建虚拟环境 + 装依赖 + 创建桌面入口：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/djrolin2023/QmWorkLog/main/install.sh | bash
+```
+
+安装完成后：终端输入 `qmworklog`，或应用菜单搜索「乾明工作台账系统」即可启动。
+（脚本也会在 `~/QmWorkLog` 生成代码与虚拟环境；更新时重跑一次脚本即 `git pull` 升级。）
+
+### Linux（.deb，可选）
+
+若需要 `.deb` 包形式分发，在 Debian/Ubuntu 本机执行：
 
 ```bash
 sudo apt install python3-venv python3-pip dpkg fakeroot
