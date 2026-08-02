@@ -500,13 +500,20 @@ class MainWindow(QMainWindow):
         self._load_logo()
         self.title_label = QLabel("乾明工作台账系统")
         self.title_label.setFont(QFont("Microsoft YaHei", 18, QFont.Bold))
-        # 版本号：次要信息，明显小于标题（11px 浅灰）
+        # 版本号：贴在标题文字的右下角，明显小于标题（11px 浅灰）
         self.ver_label = QLabel(f"V{self.version}")
         self.ver_label.setFont(QFont("Microsoft YaHei", 11))
-        self.ver_label.setStyleSheet("color:#aaa;margin-left:8px;")
+        self.ver_label.setStyleSheet(
+            "color:#aaa;margin-left:6px;padding-bottom:2px;")
+        self.ver_label.setAlignment(Qt.AlignBottom)
+        title_box = QHBoxLayout()
+        title_box.setContentsMargins(0, 0, 0, 0)
+        title_box.setSpacing(0)
+        title_box.setAlignment(Qt.AlignBottom)
+        title_box.addWidget(self.title_label)
+        title_box.addWidget(self.ver_label)
         head.addWidget(self.logo_label)
-        head.addWidget(self.title_label)
-        head.addWidget(self.ver_label)
+        head.addLayout(title_box)
         head.addStretch(1)
         root.addLayout(head)
 
