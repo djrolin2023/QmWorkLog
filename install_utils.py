@@ -11,6 +11,7 @@
 """
 import os
 import sys
+import ctypes
 import subprocess
 
 
@@ -58,14 +59,15 @@ def _quote(path):
 
 
 def create_shortcuts(exe_path, work_dir, icon_path=None, name=APP_NAME):
-    """在合适的位置为 exe 创建快捷方式/启动入口。
+    """在合适的位置为 exe 创建快捷方式/启动入口（桌面 + 开始菜单/应用）。
 
     参数：
       exe_path   : 主程序可执行文件的绝对路径
       work_dir   : 程序工作目录（用户数据目录）
       icon_path  : 图标路径（可选）
       name       : 显示名称
-    返回：创建的入口文件列表（路径）；任何平台失败都只记录不抛异常。
+    返回：创建的入口文件列表（路径）。
+    失败抛出 RuntimeError，便于调用方提示用户。
     """
     plat = get_platform()
     if plat == "windows":
@@ -77,44 +79,155 @@ def create_shortcuts(exe_path, work_dir, icon_path=None, name=APP_NAME):
     return []
 
 
+def create_desktop_shortcut(exe_path, work_dir, icon_path=None, name=APP_NAME):
+    """仅创建桌面快捷方式，返回创建的路径列表（Windows 用）。"""
+    if get_platform() != "windows":
+        # 非 Windows 复用通用逻辑（桌面也在其中）
+        return create_shortcuts(exe_path, work_dir, icon_path, name)
+    return _create_desktop_windows(exe_path, work_dir, icon_path, name)
+
+
 # --------------------------------------------------------------------------
-# Windows：PowerShell + WScript.Shell 生成 .lnk
+# Windows：PowerShell 脚本文件（WScript.Shell）生成 .lnk
+#   注：powershell -Command 传递含括号的脚本易解析失败，故改为写入临时
+#   .ps1 文件后用 powershell -File 执行，稳定可靠。
 # --------------------------------------------------------------------------
+def _user_desktop_path():
+    """返回当前登录用户的桌面真实路径（兼容 UAC 提权/特殊环境）。
+
+    优先级：
+      1) SHGetKnownFolderPath(FOLDERID_Desktop) 取真实桌面；
+      2) USERPROFILE/Desktop；
+      3) 枚举 C:\\Users\\*\\Desktop 找第一个存在的用户桌面；
+      4) C:\\Users\\Public\\Desktop（公共桌面，所有用户可见）。
+    若都找不到则返回 USERPROFILE/Desktop（即便不存在，由上层报错提示）。
+    """
+    # 1) SHGetKnownFolderPath
+    try:
+        FOLDERID_Desktop = "{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}"
+        if hasattr(ctypes.windll, "shcore"):
+            ptr = ctypes.c_void_p()
+            hr = ctypes.windll.shcore.SHGetKnownFolderPath(
+                ctypes.byref(_guid(FOLDERID_Desktop)), 0, None, ctypes.byref(ptr))
+            if hr == 0 and ptr:
+                buf = ctypes.cast(ptr, ctypes.c_wchar_p).value
+                ctypes.windll.ole32.CoTaskMemFree(ptr)
+                if buf and os.path.isdir(buf):
+                    return buf
+    except Exception:
+        pass
+    # 2) USERPROFILE/Desktop
+    base = os.environ.get("USERPROFILE") or os.path.expanduser("~")
+    desk = os.path.join(base, "Desktop")
+    if os.path.isdir(desk):
+        return desk
+    # 3) 枚举 C:\Users\*\Desktop
+    users_root = r"C:\Users"
+    if os.path.isdir(users_root):
+        for u in os.listdir(users_root):
+            cand = os.path.join(users_root, u, "Desktop")
+            if os.path.isdir(cand):
+                return cand
+    # 4) 公共桌面
+    public_desk = os.path.join(users_root if os.path.isdir(users_root) else "",
+                               "Public", "Desktop")
+    if os.path.isdir(public_desk):
+        return public_desk
+    return desk
+
+
+def _guid(s):
+    """把 GUID 字符串转成 ctypes 结构（供 SHGetKnownFolderPath 使用）。"""
+    class _G(ctypes.Structure):
+        _fields_ = [("Data1", ctypes.c_ulong), ("Data2", ctypes.c_ushort),
+                    ("Data3", ctypes.c_ushort), ("Data4", ctypes.c_byte * 8)]
+    import uuid
+    u = uuid.UUID(s)
+    g = _G()
+    g.Data1 = u.time_low
+    g.Data2 = u.time_mid
+    g.Data3 = u.time_hi_version
+    for i in range(8):
+        g.Data4[i] = u.bytes[8 + i]
+    return g
+
+
+def _build_ps1(link_path, target, work_dir, desc, icon):
+    """生成创建单个 .lnk 的 PowerShell 脚本文本。"""
+    def esc(s):
+        return (s or "").replace("'", "''")
+    lines = [
+        "$ErrorActionPreference = 'Stop'",
+        "$ws = New-Object -ComObject WScript.Shell",
+        "$sc = $ws.CreateShortcut('%s')" % esc(link_path),
+        "$sc.TargetPath = '%s'" % esc(target),
+        "$sc.WorkingDirectory = '%s'" % esc(work_dir),
+        "$sc.Description = '%s'" % esc(desc),
+    ]
+    if icon:
+        lines.append("$sc.IconLocation = '%s'" % esc(icon))
+    lines.append("$sc.Save()")
+    return "\n".join(lines)
+
+
+def _run_powershell_file(script):
+    """把脚本写入临时 .ps1 并执行，返回 (success, stderr)。"""
+    import tempfile
+    fd, path = tempfile.mkstemp(suffix=".ps1", prefix="qm_sc_")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(script)
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy",
+             "Bypass", "-File", path],
+            capture_output=True, text=True, timeout=60)
+        return r.returncode == 0, (r.stderr or r.stdout)
+    except Exception as e:
+        return False, str(e)
+    finally:
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+
+def _create_desktop_windows(exe_path, work_dir, icon_path, name):
+    if not exe_path.lower().endswith(".exe"):
+        raise RuntimeError("仅支持 .exe 创建 Windows 快捷方式")
+    desktop = _user_desktop_path()
+    if not os.path.isdir(desktop):
+        raise RuntimeError("未找到桌面目录：%s" % desktop)
+    link = os.path.join(desktop, "%s.lnk" % name)
+    icon = icon_path if (icon_path and os.path.exists(icon_path)) else None
+    ok, err = _run_powershell_file(_build_ps1(link, exe_path, work_dir, name, icon))
+    if not ok or not os.path.exists(link):
+        raise RuntimeError("创建桌面快捷方式失败：%s\n%s" % (link, err))
+    return [link]
+
+
 def _create_shortcuts_windows(exe_path, work_dir, icon_path, name):
     if not exe_path.lower().endswith(".exe"):
         return []
-    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+    desktop = _user_desktop_path()
     start_menu = os.path.join(
         os.environ.get("PROGRAMDATA", r"C:\ProgramData"),
         "Microsoft", "Windows", "Start Menu", "Programs")
 
+    created = []
     targets = []
     if os.path.isdir(desktop):
-        targets.append(os.path.join(desktop, f"{name}.lnk"))
+        targets.append(os.path.join(desktop, "%s.lnk" % name))
     if os.path.isdir(start_menu):
-        targets.append(os.path.join(start_menu, f"{name}.lnk"))
-    if not targets:
-        return []
-
-    ps_lines = ["$ws = New-Object -ComObject WScript.Shell"]
+        targets.append(os.path.join(start_menu, "%s.lnk" % name))
+    icon = icon_path if (icon_path and os.path.exists(icon_path)) else None
     for link in targets:
-        ps_lines.append("$sc = $ws.CreateShortcut('%s')" % _quote(link))
-        ps_lines.append("$sc.TargetPath = '%s'" % _quote(exe_path))
-        ps_lines.append("$sc.WorkingDirectory = '%s'" % _quote(work_dir))
-        ps_lines.append("$sc.Description = '%s'" % _quote(name))
-        if icon_path and os.path.exists(icon_path):
-            ps_lines.append("$sc.IconLocation = '%s'" % _quote(icon_path))
-        ps_lines.append("$sc.Save()")
-    ps_script = "\n".join(ps_lines)
-
-    try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
-            capture_output=True, text=True, timeout=30)
-        return targets
-    except Exception as e:
-        print("[shortcut] Windows 创建快捷方式失败：%s" % e, file=sys.stderr)
-        return []
+        ok, err = _run_powershell_file(
+            _build_ps1(link, exe_path, work_dir, name, icon))
+        if ok and os.path.exists(link):
+            created.append(link)
+    if not created:
+        raise RuntimeError("未能在任何位置创建 Windows 快捷方式")
+    return created
 
 
 # --------------------------------------------------------------------------

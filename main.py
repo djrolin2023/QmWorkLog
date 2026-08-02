@@ -11,6 +11,7 @@ import os
 import sys
 import json
 import shutil
+import ctypes
 import subprocess
 import urllib.request
 import webbrowser
@@ -180,12 +181,16 @@ def ensure_run_dir():
     """确保程序位于 QmWorkLog 目录中运行。
 
     已在 QmWorkLog 目录（无论父路径是什么）-> 直接放行。
-    否则让用户选盘符，将整个项目迁移到 X:\\QmWorkLog（不嵌套、
-    已存在则复用），随后从新目录重启自身。
+    - 开发模式（脚本）：让用户选盘符，将项目迁移到 X:\\QmWorkLog 并从新目录重启。
+    - 冻结模式（exe）：若不在 QmWorkLog 目录，自动将 exe 复制到默认安装目录
+      X:\\QmWorkLog（有 D 盘用 D，否则 C），并从新位置重启，数据随之落在那。
     返回 True 表示可以继续启动界面。
     """
     if in_required_dir():
         return True
+
+    if getattr(sys, "frozen", False):
+        return _ensure_run_dir_frozen()
 
     drive = pick_target_drive()
     if not drive:
@@ -244,11 +249,73 @@ def _copy_project(src, dst):
         for name in files:
             if name.endswith((".pyc", ".pyo")):
                 continue
+        try:
+            shutil.copy2(os.path.join(root, name),
+                         os.path.join(out_dir, name))
+        except Exception:
+            pass
+
+
+def _msgbox(title, text, style=0):
+    """用 Win32 MessageBox 弹窗（不依赖 QApplication）。
+
+    style: 0=OK, 0x10=错误图标+OK, 0x40=信息图标+OK
+    """
+    try:
+        ctypes.windll.user32.MessageBoxW(0, text, title, style)
+    except Exception:
+        print("[%s] %s" % (title, text))
+
+
+def _ensure_run_dir_frozen():
+    """冻结模式（exe）目录校验：若不在 QmWorkLog 目录，迁移 exe 到默认安装目录并重启。
+
+    默认安装目录按平台选择（Windows 有 D 盘用 D:\\QmWorkLog，否则 C:\\QmWorkLog）。
+    数据目录（DB/Data/users.json/config.json）将随 exe 落在该目录，保证持久化。
+    返回 True 表示当前已在 QmWorkLog 目录，可继续启动界面；返回 False 表示已触发
+    迁移并从新位置重启（本进程应退出）。
+    """
+    import install_utils as iu
+
+    exe_src = _app_exe_path()
+    target = iu.default_install_dir()
+    target_exe = os.path.join(target, os.path.basename(exe_src))
+
+    # 已经就在目标目录或某个 QmWorkLog 目录，无需迁移
+    if os.path.normcase(os.path.normpath(os.path.dirname(exe_src))) == \
+            os.path.normcase(os.path.normpath(target)):
+        return True
+    if in_required_dir():
+        return True
+
+    try:
+        os.makedirs(target, exist_ok=True)
+        if os.path.abspath(exe_src) != os.path.abspath(target_exe):
+            shutil.copyfile(exe_src, target_exe)
             try:
-                shutil.copy2(os.path.join(root, name),
-                             os.path.join(out_dir, name))
+                os.chmod(target_exe, 0o755)
             except Exception:
                 pass
+    except Exception as e:
+        _msgbox("迁移失败",
+                "无法将程序复制到 %s：\n%s\n请手动将 exe 放入名为 QmWorkLog 的目录后运行。"
+                % (target, e), 0x10)
+        return False
+
+    try:
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) \
+            if os.name == "nt" else 0
+        subprocess.Popen([target_exe], cwd=target, creationflags=creationflags)
+    except Exception as e:
+        _msgbox("启动失败",
+                "已复制到 %s，但重启失败：\n%s\n请手动运行该目录下的 exe。"
+                % (target, e), 0x10)
+        return False
+
+    _msgbox("已迁移",
+            "程序已放置到：\n%s\n\n将从该目录重新启动，本窗口即将关闭。" % target,
+            0x40)
+    return False
 
 
 def _first_existing(*paths):
@@ -483,16 +550,17 @@ class MainWindow(QMainWindow):
         # ---- 硬件监控 ----
         hw_frame = QFrame()
         hw_frame.setFrameShape(QFrame.StyledPanel)
+        hw_frame.setMinimumHeight(150)
         hw_frame.setStyleSheet(
             "QFrame{background:rgba(255,255,255,0.75);"
             "border-radius:10px;}")
         hw_layout = QHBoxLayout(hw_frame)
-        hw_layout.setContentsMargins(10, 8, 10, 8)
+        hw_layout.setContentsMargins(10, 10, 10, 6)
         hw_layout.setSpacing(56)
-        self.cpu_gauge = GaugeWidget("CPU", color="#e67e22", size=92)
-        self.mem_gauge = GaugeWidget("内存", color="#2980b9", size=92)
-        self.disk_gauge = GaugeWidget("磁盘", color="#27ae60", size=92)
-        self.ratio_gauge = GaugeWidget("占比", color="#8e44ad", size=92)
+        self.cpu_gauge = GaugeWidget("CPU", color="#e67e22", size=80)
+        self.mem_gauge = GaugeWidget("内存", color="#2980b9", size=80)
+        self.disk_gauge = GaugeWidget("磁盘", color="#27ae60", size=80)
+        self.ratio_gauge = GaugeWidget("占比", color="#8e44ad", size=80)
         # 各仪表盘旁的实时文字数据标签（简短单行）
         self.cpu_temp_lbl = QLabel("温度 --")
         self.mem_detail_lbl = QLabel("-- / --")
@@ -505,7 +573,7 @@ class MainWindow(QMainWindow):
                 (self.ratio_gauge, "本月/历史", self.ratio_detail_lbl)):
             col = QVBoxLayout()
             col.setSpacing(6)
-            col.setAlignment(Qt.AlignCenter)
+            col.setAlignment(Qt.AlignTop)
             # 标题放最上方，加深加粗提升清晰度
             t = QLabel(title)
             t.setStyleSheet(
@@ -513,16 +581,20 @@ class MainWindow(QMainWindow):
             t.setFixedWidth(110)
             t.setAlignment(Qt.AlignCenter)
             col.addWidget(t, alignment=Qt.AlignCenter)
-            gauge.setFixedSize(92, 92)
+            gauge.setFixedSize(80, 80)
             col.addWidget(gauge, alignment=Qt.AlignCenter)
+            # 圆环与下方细节拉开距离，避免文字贴住圆环底部
+            col.addSpacing(24)
             # 细节数据（温度 N/A 等）放仪表盘下方
             detail.setStyleSheet(
                 "color:#222;font-size:12px;font-weight:600;")
             detail.setFixedWidth(110)
+            detail.setFixedHeight(22)
+            detail.setWordWrap(False)
             detail.setAlignment(Qt.AlignCenter)
             col.addWidget(detail, alignment=Qt.AlignCenter)
             hw_layout.addLayout(col)
-        hw_layout.setAlignment(Qt.AlignCenter)
+        hw_layout.setAlignment(Qt.AlignTop)
         root.addWidget(hw_frame)
         root.addStretch(1)
 
@@ -799,7 +871,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "打开失败", f"无法打开台账目录：\n{data_dir}\n{e}")
 
     def create_desktop_shortcut(self):
-        """手动创建程序快捷方式（复用首次运行的跨平台创建逻辑）。"""
+        """手动创建桌面快捷方式（仅桌面，使用 ctypes IShellLink 实现）。"""
         exe_path = _app_exe_path()
         if not getattr(sys, "frozen", False):
             QMessageBox.information(
@@ -812,12 +884,13 @@ class MainWindow(QMainWindow):
             return
         icon_path = _first_existing(LOGO_PATH, FALLBACK_ICON)
         try:
-            created = iu.create_shortcuts(exe_path, BASE, icon_path, "乾明工作台账系统")
+            created = iu.create_desktop_shortcut(
+                exe_path, BASE, icon_path, "乾明工作台账系统")
             if created:
                 QMessageBox.information(
-                    self, "创建成功", "已创建启动入口：\n" + "\n".join(created))
+                    self, "创建成功", "已创建桌面快捷方式：\n" + "\n".join(created))
             else:
-                QMessageBox.warning(self, "创建失败", "未能创建任何启动入口。")
+                QMessageBox.warning(self, "创建失败", "未能创建任何快捷方式。")
         except Exception as e:
             QMessageBox.warning(self, "创建失败", f"创建快捷方式失败：\n{e}")
 
@@ -1064,9 +1137,9 @@ def main():
 
     _warn_no_display()  # 无显示环境下提前提示，便于用户排查
 
-    # 确保位于 QmWorkLog 目录（不在则迁到所选盘符的 QmWorkLog 并重启）
-    # 冻结模式下禁用迁移：exe 已自包含，数据目录在 exe 同目录自动创建
-    if not getattr(sys, "frozen", False) and not ensure_run_dir():
+    # 确保位于 QmWorkLog 目录（不在则迁移/重启：脚本模式选盘迁移项目，
+    # 冻结模式将 exe 复制到默认安装目录的 QmWorkLog 并从新位置重启）
+    if not ensure_run_dir():
         return
 
     # 首次运行 EXE 时，自动在桌面与开始菜单创建快捷方式
