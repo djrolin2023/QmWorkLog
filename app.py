@@ -15,6 +15,7 @@ import zipfile
 import functools
 import collections
 import calendar
+import tempfile
 from datetime import datetime, timedelta
 from flask import (Flask, request, session, redirect, url_for, render_template,
                    jsonify, send_file, abort)
@@ -134,6 +135,8 @@ def add_user(username, password):
     users = load_users()
     if not username:
         return False, '用户名不能为空'
+    if not password:
+        return False, '密码不能为空'
     if username in users:
         return False, '用户名已存在'
     users[username] = _hash(password)
@@ -1260,7 +1263,7 @@ def api_logs_delete():
         detail = '、'.join(parts) + ' 的系统日志'
     db.log_action(session.get('user'), '删除日志', detail,
                   f'删除 {n} 条', request.remote_addr)
-    return jsonify(ok=True, deleted=n, total=db.count_logs())
+    return jsonify(ok=True, deleted=n, remaining=db.count_logs())
 
 
 # ------------------------- 导入 / 导出 -------------------------
@@ -1273,7 +1276,9 @@ def _import_one_file(f, default_type):
     mname = re.match(r'^\d+\.(.+?)\d{4}-\d{2}-\d{2}\.docx$', fname)
     dtype = mname.group(1) if (mname and db.type_id(
         mname.group(1))) else default_type
-    tmp = os.path.join(BASE, '_import_tmp.docx')
+    # #10 使用进程唯一的临时文件，避免并发导入时固定路径互相覆盖
+    fd, tmp = tempfile.mkstemp(suffix='.docx', dir=BASE)
+    os.close(fd)
     f.save(tmp)
     try:
         mt = FNAME_RE.match(os.path.basename(fname))
@@ -1299,11 +1304,9 @@ def _import_one_file(f, default_type):
             return {'file': fname, 'ok': True, 'msg': f'导入为 {os.path.basename(dst)}',
                     'dup': existed}
         else:
-            # 月度文件 -> 拆分
-            doc_dates = docx_utils.split_monthly_docx(
-                tmp, dtype,
-                [os.path.join(DATA_DIR, dtype, '_tmp_split')])
-            tmp_dir = os.path.join(DATA_DIR, dtype, '_tmp_split')
+            # 月度文件 -> 拆分（用唯一临时目录，避免并发覆盖）
+            tmp_dir = tempfile.mkdtemp(prefix='_imp_', dir=DATA_DIR)
+            doc_dates = docx_utils.split_monthly_docx(tmp, dtype, [tmp_dir])
             n = 0
             dup_n = 0
             for (y, m, d), fn in doc_dates:

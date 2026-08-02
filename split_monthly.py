@@ -17,6 +17,9 @@ def split(src, dtype):
         print(f'[跳过] {src} 无表格')
         return
     date = find_date_in_table(doc.tables[0])
+    if not date:
+        print(f'[跳过] {src} 未在表格中找到日期')
+        return
     y, m = date[0], date[1]
     out1 = os.path.join(BASE, dtype, f'{y:04d}', f'{m:02d}')
     out2 = os.path.join(BASE, 'Data', dtype, f'{y:04d}', f'{m:02d}')

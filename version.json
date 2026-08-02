@@ -1,7 +1,7 @@
 {
   "date": "26.08.02",
-  "seq": 101,
-  "version": "26.08.02.101",
+  "seq": 102,
+  "version": "26.08.02.102",
   "history": [
     {
       "date": "26.08.01",
@@ -272,6 +272,12 @@
       "ver": "26.08.02.101",
       "type": "minor",
       "reason": "桌面客户端安全加固与稳定性修复：1)备份恢复zip slip防护(路径越界拦截);2)users.json/config.json原子写防损坏;3)参数int容错防500;4)secret_key随机持久化(secret.key)避免伪造;5)log_action异常落app.log;6)修复启动/停止/重启服务UI卡死(stop改为非阻塞+后台线程重启)"
+    },
+    {
+      "date": "26.08.02",
+      "ver": "26.08.02.102",
+      "type": "minor",
+      "reason": "Trae CN审计二次复核修复: #9 split_monthly无日期文档跳过防崩溃; #10 导入临时文件/目录改用tempfile唯一路径防并发覆盖; #11 add_user禁止空密码; #17 日志删除返回字段语义明确(deleted/remaining)"
     }
   ]
 }
