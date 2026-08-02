@@ -119,20 +119,23 @@ def _user_desktop_path():
     # 2) USERPROFILE/Desktop
     base = os.environ.get("USERPROFILE") or os.path.expanduser("~")
     desk = os.path.join(base, "Desktop")
+    # 不回退到公共桌面（C:\Users\Public\Desktop 受 UAC 写保护，
+    # 即使以管理员运行也可能 Save 失败）。优先保证用户桌面可写。
     if os.path.isdir(desk):
         return desk
-    # 3) 枚举 C:\Users\*\Desktop
+    # 3) 枚举 C:\Users\*\Desktop 找第一个存在的用户桌面
     users_root = r"C:\Users"
     if os.path.isdir(users_root):
         for u in os.listdir(users_root):
             cand = os.path.join(users_root, u, "Desktop")
             if os.path.isdir(cand):
                 return cand
-    # 4) 公共桌面
-    public_desk = os.path.join(users_root if os.path.isdir(users_root) else "",
-                               "Public", "Desktop")
-    if os.path.isdir(public_desk):
-        return public_desk
+    # 4) 用户桌面不存在则创建它（保证可写，避免公共桌面权限问题）
+    try:
+        os.makedirs(desk, exist_ok=True)
+        return desk
+    except Exception:
+        pass
     return desk
 
 
@@ -209,24 +212,38 @@ def _create_shortcuts_windows(exe_path, work_dir, icon_path, name):
     if not exe_path.lower().endswith(".exe"):
         return []
     desktop = _user_desktop_path()
-    start_menu = os.path.join(
+    # 开始菜单：优先公共（PROGRAMDATA），失败回退当前用户，再失败则跳过
+    start_menu_common = os.path.join(
         os.environ.get("PROGRAMDATA", r"C:\ProgramData"),
         "Microsoft", "Windows", "Start Menu", "Programs")
+    start_menu_user = os.path.join(
+        os.environ.get("APPDATA", ""),
+        "Microsoft", "Windows", "Start Menu", "Programs")
+    icon = icon_path if (icon_path and os.path.exists(icon_path)) else None
 
     created = []
-    targets = []
+    # 桌面快捷方式必须成功（用户桌面一定可写）
     if os.path.isdir(desktop):
-        targets.append(os.path.join(desktop, "%s.lnk" % name))
-    if os.path.isdir(start_menu):
-        targets.append(os.path.join(start_menu, "%s.lnk" % name))
-    icon = icon_path if (icon_path and os.path.exists(icon_path)) else None
-    for link in targets:
+        link = os.path.join(desktop, "%s.lnk" % name)
         ok, err = _run_powershell_file(
             _build_ps1(link, exe_path, work_dir, name, icon))
         if ok and os.path.exists(link):
             created.append(link)
+    # 开始菜单：先试公共，失败再试用户，都不行也不致命
+    for sm in (start_menu_common, start_menu_user):
+        if not sm or not os.path.isdir(sm):
+            continue
+        link = os.path.join(sm, "%s.lnk" % name)
+        try:
+            ok, err = _run_powershell_file(
+                _build_ps1(link, exe_path, work_dir, name, icon))
+            if ok and os.path.exists(link):
+                created.append(link)
+                break
+        except Exception:
+            continue
     if not created:
-        raise RuntimeError("未能在任何位置创建 Windows 快捷方式")
+        raise RuntimeError("未能创建快捷方式（桌面或开始菜单均失败）")
     return created
 
 

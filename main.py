@@ -279,7 +279,9 @@ def _ensure_run_dir_frozen():
 
     exe_src = _app_exe_path()
     target = iu.default_install_dir()
-    target_exe = os.path.join(target, os.path.basename(exe_src))
+    # 自动解压/迁移到安装目录时，固定使用不带版本号的名字，
+    # 避免每次升级在 D:\QmWorkLog 堆积带版本号的 exe
+    target_exe = os.path.join(target, "QmWorkLog.exe")
 
     # 已经就在目标目录或某个 QmWorkLog 目录，无需迁移
     if os.path.normcase(os.path.normpath(os.path.dirname(exe_src))) == \
