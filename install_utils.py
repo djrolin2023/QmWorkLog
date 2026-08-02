@@ -307,8 +307,10 @@ def _create_desktop_windows(exe_path, work_dir, icon_path, name):
     if not os.path.isdir(desktop):
         raise RuntimeError("未找到桌面目录：%s" % desktop)
     link = os.path.join(desktop, "%s.lnk" % name)
-    icon = icon_path if (icon_path and os.path.exists(icon_path)) else None
-    if not _create_lnk(link, exe_path, work_dir, name, icon):
+    # 快捷方式图标统一使用 exe 内嵌图标（PyInstaller 已将 logo.ico 编译进 exe
+    # 资源，永久有效），不再引用 _MEIPASS 临时目录里的 ico（程序退出后被删除，
+    # 会导致图标失效）。因此无论传入的 icon_path 是什么都不设外部图标。
+    if not _create_lnk(link, exe_path, work_dir, name, None):
         raise RuntimeError("创建桌面快捷方式失败：%s" % link)
     return [link]
 
@@ -324,7 +326,8 @@ def _create_shortcuts_windows(exe_path, work_dir, icon_path, name):
     start_menu_common = os.path.join(
         os.environ.get("PROGRAMDATA", r"C:\ProgramData"),
         "Microsoft", "Windows", "Start Menu", "Programs")
-    icon = icon_path if (icon_path and os.path.exists(icon_path)) else None
+    # 图标用 exe 内嵌，不引用外部临时 ico（理由同上）
+    icon = None
 
     created = []
     # 桌面快捷方式（落到真实登录用户桌面，必成功）
