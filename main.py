@@ -74,7 +74,7 @@ class GaugeWidget(QWidget):
     零额外依赖，使用 QPainter 绘制：底色环 + 占用弧 + 中心百分比文字。
     """
 
-    def __init__(self, title, color="#1d8a4e", size=92):
+    def __init__(self, title, color="#1d8a4e", size=78):
         super().__init__()
         self.title = title
         self.color = color
@@ -94,25 +94,103 @@ class GaugeWidget(QWidget):
         from PyQt5.QtCore import Qt as QTC
         super().paintEvent(event)
         d = self.size
-        margin = 8
-        r = d - margin * 2
+        margin = 6
+        ring = 9
+        # 把可用的圆绘制区域收缩，避免圆环被 frame 边框遮挡
+        inner = int(margin + ring / 2)
+        r = int(d - inner * 2)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         # 底环
-        pen = QPen(QColor("#e6e6e6"), 10)
+        pen = QPen(QColor("#e6e6e6"), ring)
         pen.setCapStyle(QTC.FlatCap)
         painter.setPen(pen)
-        painter.drawEllipse(margin, margin, r, r)
+        painter.drawEllipse(inner, inner, r, r)
         # 占用弧
-        pen = QPen(QColor(self.color), 10)
+        pen = QPen(QColor(self.color), ring)
         pen.setCapStyle(QTC.FlatCap)
         painter.setPen(pen)
         span = int(360 * self._percent / 100.0)
-        painter.drawArc(margin, margin, r, r, 90 * 16, -span * 16)
-        # 中心百分比
+        painter.drawArc(inner, inner, r, r, 90 * 16, -span * 16)
+        # 中心百分比（字号随尺寸自适应，避免被圆环遮挡）
         painter.setPen(QColor("#333"))
-        painter.setFont(QF("Microsoft YaHei", 15, QF.Bold))
+        painter.setFont(QF("Microsoft YaHei", 13, QF.Bold))
         painter.drawText(self.rect(), QTC.AlignCenter, f"{self._percent:.0f}%")
+        painter.end()
+
+
+class HeartbeatWidget(QWidget):
+    """网络流量心电图：自绘滚动折线图（类似心电图/示波器）。
+
+    维护上传/下载速度历史队列，每次 push 新速率后整体左移重绘，
+    形成从左到右滚动的波形曲线。上行用橙色，下行用蓝色。
+    """
+
+    def __init__(self, width=120, height=46, max_points=60):
+        super().__init__()
+        self.setFixedSize(width, height)
+        self._w = width
+        self._h = height
+        self._max = max_points
+        self._up = [0.0] * max_points
+        self._dn = [0.0] * max_points
+        self._peak = 1.0  # 用于纵向缩放的峰值（动态）
+
+    def push(self, up, dn):
+        """推入新的上传/下载速率（bytes/s），整体左移重绘。"""
+        self._up.append(float(up))
+        self._up.pop(0)
+        self._dn.append(float(dn))
+        self._dn.pop(0)
+        peak = max(self._up + self._dn + [1.0])
+        self._peak = max(self._peak * 0.9, peak)  # 平滑跟随，避免跳变
+        self.update()
+
+    def _draw_series(self, painter, series, color):
+        from PyQt5.QtGui import QColor, QPen
+        from PyQt5.QtCore import Qt as QTC
+        n = len(series)
+        if n < 2:
+            return
+        mid = self._h / 2.0
+        # 以峰值归一化，留出上下边距
+        scale = (self._h / 2.0 - 3.0) / self._peak
+        pen = QPen(QColor(color), 1.6)
+        pen.setCapStyle(QTC.RoundCap)
+        pen.setJoinStyle(QTC.RoundJoin)
+        painter.setPen(pen)
+        step = self._w / (n - 1)
+        pts = []
+        for i, v in enumerate(series):
+            x = int(i * step)
+            y = int(mid - v * scale)
+            pts.append((x, y))
+        # 折线
+        for i in range(1, len(pts)):
+            painter.drawLine(pts[i - 1][0], pts[i - 1][1],
+                             pts[i][0], pts[i][1])
+        # 末端亮点（当前值）
+        last = pts[-1]
+        painter.setBrush(QColor(color))
+        painter.setPen(QColor(color))
+        painter.drawEllipse(int(last[0] - 1.5), int(last[1] - 1.5), 3, 3)
+
+    def paintEvent(self, event):
+        from PyQt5.QtGui import QPainter, QColor, QPen
+        from PyQt5.QtCore import Qt as QTC
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        # 背景
+        painter.fillRect(self.rect(), QColor("#0f1b2d"))
+        # 中线
+        pen = QPen(QColor("#233a55"), 1)
+        pen.setStyle(QTC.DashLine)
+        painter.setPen(pen)
+        painter.drawLine(0, int(self._h / 2), self._w, int(self._h / 2))
+        # 波形：上行（橙）/下行（蓝）
+        self._draw_series(painter, self._up, "#e67e22")
+        self._draw_series(painter, self._dn, "#2980b9")
         painter.end()
 
 
@@ -395,8 +473,8 @@ class MainWindow(QMainWindow):
         win_icon = _first_existing(LOGO_PATH, FALLBACK_ICON)
         if win_icon:
             self.setWindowIcon(QIcon(win_icon))
-        self.resize(720, 520)
-        self.setMinimumSize(700, 500)
+        self.resize(720, 600)
+        self.setFixedSize(720, 600)
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -464,39 +542,42 @@ class MainWindow(QMainWindow):
             info_layout.addLayout(row)
         root.addWidget(info_frame)
 
-        # ---- 硬件监控（CPU / 内存 / 磁盘 环形饼图 + 网络流量）----
+        # ---- 硬件监控（CPU / 内存 / 磁盘 环形饼图 + 网络流量心电图）----
         hw_frame = QFrame()
         hw_frame.setFrameShape(QFrame.StyledPanel)
         hw_layout = QHBoxLayout(hw_frame)
-        hw_layout.setSpacing(24)
-        self.cpu_gauge = GaugeWidget("CPU", color="#e67e22", size=90)
-        self.mem_gauge = GaugeWidget("内存", color="#2980b9", size=90)
-        self.disk_gauge = GaugeWidget("磁盘", color="#27ae60", size=90)
+        hw_layout.setContentsMargins(14, 10, 14, 10)
+        hw_layout.setSpacing(20)
+        self.cpu_gauge = GaugeWidget("CPU", color="#e67e22", size=76)
+        self.mem_gauge = GaugeWidget("内存", color="#2980b9", size=76)
+        self.disk_gauge = GaugeWidget("磁盘", color="#27ae60", size=76)
         for gauge, title in (
                 (self.cpu_gauge, "CPU 占用"),
                 (self.mem_gauge, "内存占用"),
                 (self.disk_gauge, "磁盘占用")):
             col = QVBoxLayout()
-            col.setSpacing(4)
+            col.setSpacing(2)
             col.setAlignment(Qt.AlignCenter)
             col.addWidget(gauge)
             t = QLabel(title)
-            t.setStyleSheet("color:#555;font-size:12px;")
+            t.setStyleSheet("color:#555;font-size:11px;")
             t.setAlignment(Qt.AlignCenter)
             col.addWidget(t)
             hw_layout.addLayout(col)
-        # 网络流量（文字显示上传/下载速度）
+        # 网络流量：心电图 + 文字速率
         net_col = QVBoxLayout()
-        net_col.setSpacing(4)
+        net_col.setSpacing(3)
         net_col.setAlignment(Qt.AlignCenter)
+        self.heartbeat = HeartbeatWidget(width=120, height=44, max_points=60)
+        net_col.addWidget(self.heartbeat)
         self.net_up_lbl = QLabel("↑ 0 KB/s")
         self.net_down_lbl = QLabel("↓ 0 KB/s")
         for lb in (self.net_up_lbl, self.net_down_lbl):
-            lb.setStyleSheet("color:#444;font-size:13px;font-weight:600;")
+            lb.setStyleSheet("color:#444;font-size:12px;font-weight:600;")
             lb.setAlignment(Qt.AlignCenter)
             net_col.addWidget(lb)
         net_title = QLabel("网络流量")
-        net_title.setStyleSheet("color:#555;font-size:12px;")
+        net_title.setStyleSheet("color:#555;font-size:11px;")
         net_title.setAlignment(Qt.AlignCenter)
         net_col.addWidget(net_title)
         hw_layout.addLayout(net_col)
@@ -800,6 +881,8 @@ class MainWindow(QMainWindow):
                         "↑ " + self._fmt_speed(up))
                     self.net_down_lbl.setText(
                         "↓ " + self._fmt_speed(dn))
+                    # 推入心电图，形成滚动波形（上行橙/下行蓝）
+                    self.heartbeat.push(up, dn)
             self._net_io_last = (nio.bytes_sent, nio.bytes_recv)
             self._net_io_ts = now
         except Exception:
