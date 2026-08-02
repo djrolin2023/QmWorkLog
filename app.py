@@ -25,27 +25,40 @@ from docx import Document
 from docx.shared import Pt, RGBColor
 import config
 import db
+import logging
+from paths import EXE_DIR, RES_DIR
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+BASE = EXE_DIR
 DATA_DIR = os.path.join(BASE, 'Data')
 USERS_FILE = os.path.join(BASE, 'users.json')
-STATIC_IMAGES = os.path.join(BASE, 'static', 'Images')
+STATIC_IMAGES = os.path.join(RES_DIR, 'static', 'Images')
 FNAME_RE = re.compile(r'^(\d{1,2})\.(.+?)(\d{4})-(\d{2})-(\d{2})\.docx$')
 VERSION = '26.07.26'
+
+# 应用级日志（写 app.log，便于排查，不影响主流程）
+logging.basicConfig(
+    filename=os.path.join(BASE, 'app.log'),
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    encoding='utf-8',
+)
+app_logger = logging.getLogger('qm_worklog')
 
 
 def load_version():
     """读取 version.json 的当前版本号与历史记录。"""
     try:
-        with open(os.path.join(BASE, 'version.json'), 'r', encoding='utf-8') as f:
+        with open(os.path.join(RES_DIR, 'version.json'), 'r', encoding='utf-8') as f:
             d = json.load(f)
         return d.get('version', VERSION), d.get('history', [])
     except Exception:
         return VERSION, []
 
 
-app = Flask(__name__)
-app.secret_key = 'qm-worklog-secret-key-2026'
+app = Flask(__name__,
+            template_folder=os.path.join(RES_DIR, 'templates'),
+            static_folder=os.path.join(RES_DIR, 'static'))
+app.secret_key = config.load_secret_key()
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
 app.config['JSON_AS_ASCII'] = False
 # 会话持久化：登录后 cookie 有效期 30 天，重启进程/关闭浏览器后仍保持登录。
@@ -92,8 +105,25 @@ def load_users():
 
 
 def save_users(users):
-    with open(USERS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(users, f)
+    _atomic_write(USERS_FILE, lambda f: json.dump(users, f))
+
+
+def parse_int(val, default=0):
+    """容错地把字符串转 int，失败返回默认值（避免非数字参数导致 500）。"""
+    if val is None:
+        return default
+    try:
+        return int(str(val).strip())
+    except (ValueError, TypeError):
+        return default
+
+
+def _atomic_write(path, writer):
+    """原子写：先写 .tmp 临时文件，再 os.replace 替换，避免崩溃损坏文件。"""
+    tmp = path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        writer(f)
+    os.replace(tmp, path)
 
 
 def list_user_names():
@@ -348,8 +378,8 @@ def summary():
 def api_records():
     """某类型某月已有记录的日期列表"""
     dtype = check_type(request.args.get('type', ''))
-    y = int(request.args.get('year', 0))
-    m = int(request.args.get('month', 0))
+    y = parse_int(request.args.get('year', 0))
+    m = parse_int(request.args.get('month', 0))
     folder = os.path.join(DATA_DIR, dtype, f'{y:04d}', f'{m:02d}')
     days = []
     if os.path.isdir(folder):
@@ -403,7 +433,7 @@ def api_record():
 def api_record_image():
     dtype = check_type(request.args.get('type', ''))
     y, m, d = parse_date(request.args.get('date', ''))
-    idx = int(request.args.get('i', 0))
+    idx = parse_int(request.args.get('i', 0))
     path = find_record(dtype, y, m, d)
     if not path:
         abort(404)
@@ -641,10 +671,10 @@ def api_archive_create():
     """月度归档：把 Data/类型/年/月 复制到 类型/年/月"""
     data = request.get_json(force=True)
     dtype = check_type(data.get('type', ''))
-    y = int(data.get('year', 0))
+    y = parse_int(data.get('year', 0))
     m = data.get('month')
     if m:
-        pairs = [(int(m),)]
+        pairs = [(parse_int(m),)]
     else:
         # 年度归档 = 归档该年所有月份
         yroot = os.path.join(DATA_DIR, dtype, f'{y:04d}')
@@ -673,10 +703,10 @@ def api_archive_create():
 def api_archive_download():
     """下载归档压缩包。month 省略则为年度归档"""
     dtype = check_type(request.args.get('type', ''))
-    y = int(request.args.get('year', 0))
+    y = parse_int(request.args.get('year', 0))
     m = request.args.get('month')
     if m:
-        folder = os.path.join(BASE, dtype, f'{y:04d}', f'{int(m):02d}')
+        folder = os.path.join(BASE, dtype, f'{y:04d}', f'{parse_int(m):02d}')
         name = f'{dtype}-{y:04d}-{int(m):02d}.zip'
         arc = f'{dtype}/{y:04d}/{int(m):02d}'
     else:
@@ -697,10 +727,10 @@ def api_archive_delete():
     仅删除归档目录(BASE/...)，不影响 Data 源数据。"""
     data = request.get_json(force=True) if request.is_json else request.form
     dtype = check_type(data.get('type', ''))
-    y = int(data.get('year', 0))
+    y = parse_int(data.get('year', 0))
     m = data.get('month')
     if m:
-        folder = os.path.join(BASE, dtype, f'{y:04d}', f'{int(m):02d}')
+        folder = os.path.join(BASE, dtype, f'{y:04d}', f'{parse_int(m):02d}')
         label = f'{dtype}/{y:04d}/{int(m):02d}'
     else:
         folder = os.path.join(BASE, dtype, f'{y:04d}')
@@ -874,10 +904,8 @@ def api_summary():
         except ValueError:
             year = datetime.now().year
     else:
-        try:
-            year = int(request.args.get('year', datetime.now().year))
-        except ValueError:
-            year = datetime.now().year
+        year = parse_int(request.args.get('year', datetime.now().year),
+                         default=datetime.now().year)
         start, end = _period_range(period, year)
         if not start:
             return jsonify(ok=False, msg='未知的周期类型'), 400
@@ -956,10 +984,8 @@ def api_summary_export():
         except ValueError:
             year = datetime.now().year
     else:
-        try:
-            year = int(request.args.get('year', datetime.now().year))
-        except ValueError:
-            year = datetime.now().year
+        year = parse_int(request.args.get('year', datetime.now().year),
+                         default=datetime.now().year)
         start, end = _period_range(period, year)
         if not start:
             return jsonify(ok=False, msg='未知的周期类型'), 400
@@ -1163,10 +1189,8 @@ def _model_desc(mid):
 
 
 def _summary_year():
-    try:
-        return int(request.args.get('year', datetime.now().year))
-    except ValueError:
-        return datetime.now().year
+    return parse_int(request.args.get('year', datetime.now().year),
+                     default=datetime.now().year)
 
 
 def _summary_label(period):
@@ -1199,10 +1223,7 @@ def api_logs():
     user = request.args.get('user', '').strip() or None
     start = request.args.get('start', '').strip() or None
     end = request.args.get('end', '').strip() or None
-    try:
-        limit = int(request.args.get('limit', 200))
-    except ValueError:
-        limit = 200
+    limit = parse_int(request.args.get('limit', 200), default=200)
     rows = db.recent_logs(limit=limit, action=action,
                           user=user, start=start, end=end)
     return jsonify(ok=True, logs=rows, total=db.count_logs())
@@ -1334,7 +1355,7 @@ def api_import():
 def api_export():
     """批量导出：type=安保|消控|全部, year 必填, month 可选, kind=zip|year"""
     dtype = request.args.get('type', '全部')
-    y = int(request.args.get('year', 0))
+    y = parse_int(request.args.get('year', 0))
     m = request.args.get('month')
     kind = request.args.get('kind', 'zip')
     if dtype == '全部':
@@ -1447,18 +1468,22 @@ def api_backup_restore():
 
     buf = io.BytesIO(up.read())
     restored = 0
+    base_abs = os.path.abspath(BASE)
     try:
         with zipfile.ZipFile(buf) as zf:
             for info in zf.infolist():
                 if info.is_dir():
                     continue
+                # 统一为 '/' 分隔并去除前导斜杠
                 arc = info.filename.replace('\\', '/').lstrip('/')
-                if '..' in arc.split('/'):
-                    continue
+                # 仅允许恢复 DB / Data / users.json 三类成员
                 top = arc.split('/')[0]
                 if top not in ('DB', 'Data') and arc != 'users.json':
                     continue
-                dst = os.path.join(BASE, *arc.split('/'))
+                # 防 zip slip：规范化后必须仍位于 BASE 内（阻止 ..\ 等绕过）
+                dst = os.path.abspath(os.path.join(BASE, arc))
+                if os.path.commonpath([base_abs, dst]) != base_abs:
+                    continue
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 with zf.open(info) as src, open(dst, 'wb') as out:
                     shutil.copyfileobj(src, out)
@@ -1603,7 +1628,8 @@ def api_user_reset(name):
     return jsonify(ok=ok, msg=msg)
 
 
-if __name__ == '__main__':
+def run_server():
+    """初始化并启动 Flask 服务（供 __main__ 与 PyInstaller worker 子进程共用）。"""
     import time as _t
     _t0 = _t.time()
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -1615,3 +1641,7 @@ if __name__ == '__main__':
     # 关闭 debug/reloader：避免 fork 子进程导致 init_db 与全量文件扫描执行两遍，
     # 这是启动慢的主因。如需热重载开发，可临时设 debug=True。
     app.run(host='0.0.0.0', port=8088, debug=False, use_reloader=False)
+
+
+if __name__ == '__main__':
+    run_server()

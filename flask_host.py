@@ -15,8 +15,9 @@ try:
 except Exception:
     _HAS_PSUTIL = False
 
-BASE = os.path.dirname(os.path.abspath(__file__))
-FLASK_APP = os.path.join(BASE, "app.py")
+from paths import EXE_DIR, FROZEN
+
+BASE = EXE_DIR
 FLASK_PORT = 8088
 FLASK_HOST = "127.0.0.1"
 
@@ -48,14 +49,20 @@ class FlaskHost:
             if self.proc and self.proc.poll() is None:
                 return True
         try:
-            # 使用与当前客户端相同的 python 解释器启动 app.py
+            # 使用与当前客户端相同的 python 解释器（exe 模式下即自身）
             python = sys.executable
             creationflags = 0
             if os.name == "nt":
                 # 不显示子进程黑窗口
                 creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            # frozen 模式下没有独立的 app.py 源文件，由 exe 自带 --flask-worker
+            # 参数自举运行 app.run()；开发模式下仍直接运行 app.py。
+            if FROZEN:
+                args = [python, "--flask-worker"]
+            else:
+                args = [python, os.path.join(BASE, "app.py")]
             self.proc = subprocess.Popen(
-                [python, FLASK_APP],
+                args,
                 cwd=BASE,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -70,17 +77,26 @@ class FlaskHost:
             return False
 
     def stop(self):
-        """停止 Flask 子进程，并清理其子孙进程。"""
+        """停止 Flask 子进程，并清理其子孙进程。
+
+        非阻塞：向进程树发出 kill 后立刻返回，不会卡住调用方
+        （GUI 主线程）；真正的进程回收在后台守护线程中 wait，
+        避免残留僵尸进程，同时不阻塞 UI 事件循环。
+        """
         with self._lock:
             proc, self.proc = self.proc, None
             self.running = False
         if proc is None:
             return
         self._kill_tree(proc.pid)
-        try:
-            proc.wait(timeout=5)
-        except Exception:
-            pass
+        # 后台线程回收已终止进程，不阻塞调用方
+
+        def _reap():
+            try:
+                proc.wait(timeout=5)
+            except Exception:
+                pass
+        threading.Thread(target=_reap, daemon=True).start()
 
     def _kill_tree(self, pid):
         """终止进程及其整个子树（windows 用 taskkill /F /T；跨平台用 psutil）。"""

@@ -6,10 +6,20 @@ docx 实体文件仍保存在原目录 Data/[类型]/[年]/[月]/ 下，
 import os
 import re
 import sqlite3
+import logging
 
 from docx import Document
+from paths import EXE_DIR
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+logging.basicConfig(
+    filename=os.path.join(EXE_DIR, 'app.log'),
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    encoding='utf-8',
+)
+db_logger = logging.getLogger('qm_worklog_db')
+
+BASE = EXE_DIR
 DB_DIR = os.path.join(BASE, 'DB')
 DB_PATH = os.path.join(DB_DIR, 'worklog.db')
 DATA_DIR = os.path.join(BASE, 'Data')
@@ -392,8 +402,10 @@ def log_action(user, action, target='', detail='', ip=''):
             (user or '', action or '', target or '', detail or '', ip or ''))
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        # 日志写入失败不应影响主流程，但需落盘便于排查
+        db_logger.error('log_action failed: user=%s action=%s err=%s',
+                        user, action, e)
 
 
 def recent_logs(limit=50, action=None, user=None, start=None, end=None):

@@ -6,9 +6,13 @@
 """
 import os
 import json
+import secrets
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+from paths import EXE_DIR, RES_DIR
+
+BASE = EXE_DIR
 CONFIG_FILE = os.path.join(BASE, 'config.json')
+SECRET_KEY_FILE = os.path.join(BASE, 'secret.key')
 
 DEFAULTS = {
     'system_title': '乾明工作台账系统',
@@ -42,7 +46,7 @@ def load_config():
             pass
     # 注入动态版本号（由 version.json 维护，不写回 config.json）
     try:
-        vfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'version.json')
+        vfile = os.path.join(RES_DIR, 'version.json')
         with open(vfile, 'r', encoding='utf-8') as f:
             cfg['version'] = json.load(f).get('version', cfg.get('version'))
     except Exception:
@@ -57,9 +61,36 @@ def save_config(data):
     saved_ai = dict(DEFAULTS.get('ai', {}))
     saved_ai.update(data.get('ai', {}) or {})
     cfg['ai'] = saved_ai
-    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+    # 原子写：先写 .tmp 再用 os.replace 替换，避免崩溃时损坏 config.json
+    tmp = CONFIG_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, CONFIG_FILE)
     return cfg
+
+
+def load_secret_key():
+    """返回持久化的 Flask secret_key。
+
+    首次运行随机生成并写入 secret.key（与 config.json 同级，属用户数据，
+    更新程序不应删除），后续复用以保证重启后登录会话不失效。
+    仅本机/内网可信部署使用，不依赖外部机密管理。
+    """
+    if os.path.exists(SECRET_KEY_FILE):
+        try:
+            with open(SECRET_KEY_FILE, 'r', encoding='utf-8') as f:
+                key = f.read().strip()
+            if key:
+                return key
+        except Exception:
+            pass
+    key = secrets.token_hex(32)
+    try:
+        with open(SECRET_KEY_FILE, 'w', encoding='utf-8') as f:
+            f.write(key)
+    except Exception:
+        pass
+    return key
 
 
 def company_full(cfg=None):

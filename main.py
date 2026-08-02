@@ -16,6 +16,12 @@ import urllib.request
 import webbrowser
 import threading
 import time
+import warnings
+
+import system_info
+from flask_host import FlaskHost
+
+warnings.filterwarnings("ignore", message=".*sipPyTypeDict.*")
 
 # 修复 PyQt5 在虚拟环境下找不到字体目录的告警：
 # Qt 找不到 QT_QPA_FONTDIR 时会回退到系统字体，但会疯狂打印 stderr 警告。
@@ -30,18 +36,23 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QFrame, QMenu, QSystemTrayIcon, QMessageBox, QStyle,
     QInputDialog,
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QCoreApplication
 from PyQt5.QtGui import QIcon, QFont
 
-import system_info
-from flask_host import FlaskHost
+# 开启高 DPI 缩放，避免 Windows 缩放下文字/控件被拉伸发虚
+QCoreApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+QCoreApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 
+
+# 路径解析：frozen 模式下 BASE 指向 exe 所在目录，资源从 RES_DIR 读取
+from paths import EXE_DIR, RES_DIR
 
 # 本文件位于项目根目录（QmWorkLog），BASE 即根目录
-BASE = os.path.dirname(os.path.abspath(__file__))
+BASE = EXE_DIR
 ROOT = BASE
-VERSION_FILE = os.path.join(BASE, "version.json")
-IMG_DIR = os.path.join(BASE, "static", "Images")
+VERSION_FILE = os.path.join(RES_DIR, "version.json")
+IMG_DIR = os.path.join(RES_DIR, "static", "Images")
 LOGO_PATH = os.path.join(IMG_DIR, "logo.ico")           # 主图标（彩色）
 LOGO_SVG = os.path.join(IMG_DIR, "logo.svg")             # 矢量 LOGO（清晰）
 ICON_RUN = os.path.join(IMG_DIR, "logo.ico")            # 运行中：彩色
@@ -118,91 +129,6 @@ class GaugeWidget(QWidget):
         painter.setPen(QColor("#333"))
         painter.setFont(QF("Microsoft YaHei", 13, QF.Bold))
         painter.drawText(self.rect(), QTC.AlignCenter, f"{self._percent:.0f}%")
-        painter.end()
-
-
-class HeartbeatWidget(QWidget):
-    """网络流量波形图：浅色背景滚动折线，与窗口风格统一。"""
-
-    def __init__(self, width=160, height=52, max_points=60):
-        super().__init__()
-        self.setFixedSize(width, height)
-        self._w = width
-        self._h = height
-        self._max = max_points
-        self._up = [0.0] * max_points
-        self._dn = [0.0] * max_points
-        self._peak = 1.0
-
-    def push(self, up, dn):
-        self._up.append(float(up))
-        self._up.pop(0)
-        self._dn.append(float(dn))
-        self._dn.pop(0)
-        peak = max(self._up + self._dn + [1.0])
-        self._peak = max(self._peak * 0.9, peak)
-        self.update()
-
-    def _draw_series(self, painter, series, color, fill_alpha=35):
-        from PyQt5.QtGui import QColor, QPen, QBrush, QPolygon
-        from PyQt5.QtCore import Qt as QTC, QPoint
-        n = len(series)
-        if n < 2:
-            return
-        mid = int(self._h / 2.0)
-        scale = (self._h / 2.0 - 5.0) / self._peak
-        # 折线（加粗）
-        pen = QPen(QColor(color), 2.2)
-        pen.setCapStyle(QTC.RoundCap)
-        pen.setJoinStyle(QTC.RoundJoin)
-        painter.setPen(pen)
-        step = self._w / (n - 1)
-        pts = []
-        for i, v in enumerate(series):
-            x = int(i * step)
-            y = int(mid - v * scale)
-            pts.append((x, y))
-        for i in range(1, len(pts)):
-            painter.drawLine(pts[i - 1][0], pts[i - 1][1],
-                             pts[i][0], pts[i][1])
-        # 半透明填充到底边
-        poly = QPolygon()
-        for x, y in pts:
-            poly.append(QPoint(x, y))
-        poly.append(QPoint(self._w, mid))
-        poly.append(QPoint(0, mid))
-        painter.setPen(QTC.NoPen)
-        c = QColor(color)
-        c.setAlpha(fill_alpha)
-        painter.setBrush(QBrush(c))
-        painter.drawPolygon(poly)
-        # 末端亮点
-        last = pts[-1]
-        painter.setBrush(QColor(color))
-        painter.setPen(QColor(color))
-        painter.drawEllipse(int(last[0] - 2.5), int(last[1] - 2.5), 5, 5)
-
-    def paintEvent(self, event):
-        from PyQt5.QtGui import QPainter, QColor, QPen
-        from PyQt5.QtCore import Qt as QTC
-        super().paintEvent(event)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        # 浅色背景（与窗口融合）
-        painter.fillRect(self.rect(), QColor("#f5f5f5"))
-        # 边框
-        pen = QPen(QColor("#d0d0d0"), 1)
-        painter.setPen(pen)
-        painter.drawRect(0, 0, self._w - 1, self._h - 1)
-        # 中线
-        mid = int(self._h / 2)
-        pen = QPen(QColor("#cccccc"), 1)
-        pen.setStyle(QTC.DashLine)
-        painter.setPen(pen)
-        painter.drawLine(0, mid, self._w, mid)
-        # 波形：上行（橙）/下行（蓝）
-        self._draw_series(painter, self._up, "#e67e22", fill_alpha=40)
-        self._draw_series(painter, self._dn, "#2980b9", fill_alpha=40)
         painter.end()
 
 
@@ -489,6 +415,11 @@ class MainWindow(QMainWindow):
         self.setFixedSize(720, 600)
 
         central = QWidget()
+        central.setStyleSheet(
+            "QWidget{background:qlineargradient("
+            "x1:0,y1:0,x2:0,y2:1,"
+            "stop:0 #eafaf0,stop:0.5 #eef6f0,stop:1 #e3eee7);"
+            "border-radius:10px;}")
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
         root.setContentsMargins(18, 18, 18, 18)
@@ -506,6 +437,7 @@ class MainWindow(QMainWindow):
         head.addWidget(self.title_box)
         head.addStretch(1)
         root.addLayout(head)
+        root.addStretch(1)
 
         # ---- 系统访问地址 ----
         addr_row = QHBoxLayout()
@@ -516,11 +448,28 @@ class MainWindow(QMainWindow):
         addr_row.addWidget(addr_lbl)
         addr_row.addWidget(self.addr_val)
         addr_row.addStretch(1)
+        # 创建桌面快捷方式：文字链接样式
+        self.link_shortcut = QLabel('<a href="#">创建桌面快捷方式</a>')
+        self.link_shortcut.setStyleSheet(
+            "color:#1a73e8;font-size:13px;text-decoration:underline;")
+        self.link_shortcut.setCursor(Qt.PointingHandCursor)
+        self.link_shortcut.setOpenExternalLinks(False)
+        self.link_shortcut.linkActivated.connect(self.create_desktop_shortcut)
+        addr_row.addWidget(self.link_shortcut)
+        # 打开台账目录按钮
+        self.btn_data_dir = QPushButton("打开台账目录")
+        self.btn_data_dir.setFixedSize(120, 34)
+        self.btn_data_dir.setCursor(Qt.PointingHandCursor)
+        self.btn_data_dir.clicked.connect(self.open_data_dir)
+        addr_row.addWidget(self.btn_data_dir)
         root.addLayout(addr_row)
 
         # ---- 信息展示区 ----
         info_frame = QFrame()
         info_frame.setFrameShape(QFrame.StyledPanel)
+        info_frame.setStyleSheet(
+            "QFrame{background:rgba(255,255,255,0.75);"
+            "border-radius:10px;}")
         info_layout = QVBoxLayout(info_frame)
         info_layout.setSpacing(8)
         self.addr_val2 = QLabel("获取中…")
@@ -546,57 +495,60 @@ class MainWindow(QMainWindow):
                 row.addStretch(1)
             info_layout.addLayout(row)
         root.addWidget(info_frame)
+        root.addStretch(1)
 
         # ---- 硬件监控 ----
         hw_frame = QFrame()
         hw_frame.setFrameShape(QFrame.StyledPanel)
+        hw_frame.setStyleSheet(
+            "QFrame{background:rgba(255,255,255,0.75);"
+            "border-radius:10px;}")
         hw_layout = QHBoxLayout(hw_frame)
-        hw_layout.setContentsMargins(14, 10, 14, 10)
-        hw_layout.setSpacing(20)
-        self.cpu_gauge = GaugeWidget("CPU", color="#e67e22", size=76)
-        self.mem_gauge = GaugeWidget("内存", color="#2980b9", size=76)
-        self.disk_gauge = GaugeWidget("磁盘", color="#27ae60", size=76)
-        for gauge, title in (
-                (self.cpu_gauge, "CPU 占用"),
-                (self.mem_gauge, "内存占用"),
-                (self.disk_gauge, "磁盘占用")):
+        hw_layout.setContentsMargins(10, 8, 10, 8)
+        hw_layout.setSpacing(56)
+        self.cpu_gauge = GaugeWidget("CPU", color="#e67e22", size=92)
+        self.mem_gauge = GaugeWidget("内存", color="#2980b9", size=92)
+        self.disk_gauge = GaugeWidget("磁盘", color="#27ae60", size=92)
+        self.ratio_gauge = GaugeWidget("占比", color="#8e44ad", size=92)
+        # 各仪表盘旁的实时文字数据标签（简短单行）
+        self.cpu_temp_lbl = QLabel("温度 --")
+        self.mem_detail_lbl = QLabel("-- / --")
+        self.disk_detail_lbl = QLabel("剩余 --")
+        self.ratio_detail_lbl = QLabel("-- / --")
+        for gauge, title, detail in (
+                (self.cpu_gauge, "CPU 占用", self.cpu_temp_lbl),
+                (self.mem_gauge, "内存占用", self.mem_detail_lbl),
+                (self.disk_gauge, "磁盘占用", self.disk_detail_lbl),
+                (self.ratio_gauge, "本月/历史", self.ratio_detail_lbl)):
             col = QVBoxLayout()
-            col.setSpacing(2)
+            col.setSpacing(6)
             col.setAlignment(Qt.AlignCenter)
-            col.addWidget(gauge)
+            # 标题放最上方，加深加粗提升清晰度
             t = QLabel(title)
-            t.setStyleSheet("color:#555;font-size:11px;")
+            t.setStyleSheet(
+                "color:#222;font-size:13px;font-weight:700;")
+            t.setFixedWidth(110)
             t.setAlignment(Qt.AlignCenter)
-            col.addWidget(t)
+            col.addWidget(t, alignment=Qt.AlignCenter)
+            gauge.setFixedSize(92, 92)
+            col.addWidget(gauge, alignment=Qt.AlignCenter)
+            # 细节数据（温度 N/A 等）放仪表盘下方
+            detail.setStyleSheet(
+                "color:#222;font-size:12px;font-weight:600;")
+            detail.setFixedWidth(110)
+            detail.setAlignment(Qt.AlignCenter)
+            col.addWidget(detail, alignment=Qt.AlignCenter)
             hw_layout.addLayout(col)
-
-        # 网络流量：横向排列 [心电图 | 网络流量 ↑ xxx ↓ xxx]
-        net_row = QHBoxLayout()
-        net_row.setSpacing(6)
-        self.heartbeat = HeartbeatWidget(width=160, height=52, max_points=60)
-        net_row.addWidget(self.heartbeat)
-        net_info = QVBoxLayout()
-        net_info.setSpacing(2)
-        net_title = QLabel("网络流量")
-        net_title.setStyleSheet("color:#555;font-size:11px;")
-        self.net_up_lbl = QLabel("↑ 0 KB/s")
-        self.net_down_lbl = QLabel("↓ 0 KB/s")
-        for lb in (self.net_up_lbl, self.net_down_lbl):
-            lb.setStyleSheet("color:#444;font-size:12px;font-weight:600;")
-        net_info.addWidget(net_title)
-        net_info.addWidget(self.net_up_lbl)
-        net_info.addWidget(self.net_down_lbl)
-        net_row.addLayout(net_info)
-        net_row.addStretch(1)
-        hw_layout.addLayout(net_row)
-        hw_layout.addStretch(1)
+        hw_layout.setAlignment(Qt.AlignCenter)
         root.addWidget(hw_frame)
-        self._net_io_last = None
-        self._net_io_ts = 0.0
+        root.addStretch(1)
 
         # ---- 进程 / 时间 / 账号 信息条 ----
         proc_frame = QFrame()
         proc_frame.setFrameShape(QFrame.StyledPanel)
+        proc_frame.setStyleSheet(
+            "QFrame{background:rgba(255,255,255,0.75);"
+            "border-radius:10px;}")
         proc_layout = QHBoxLayout(proc_frame)
         proc_layout.setSpacing(24)
         self.pid_label = QLabel(f"进程 PID：{os.getpid()}")
@@ -608,12 +560,14 @@ class MainWindow(QMainWindow):
         proc_layout.addStretch(1)
         self._load_current_user()
         root.addWidget(proc_frame)
+        root.addStretch(1)
 
         # ---- 运行时长 ----
         self.uptime_label = QLabel("系统已运行：0 天 0 小时 0 分 0 秒")
         self.uptime_label.setStyleSheet(
             "color:#444;font-size:15px;font-weight:600;")
         root.addWidget(self.uptime_label)
+        root.addStretch(1)
 
         # ---- 提示 ----
         self.tip_label = QLabel(
@@ -624,8 +578,6 @@ class MainWindow(QMainWindow):
             "padding:6px 10px;border-radius:6px;")
         self.tip_label.setWordWrap(True)
         root.addWidget(self.tip_label)
-
-        root.addStretch(1)
 
         # ---- 功能按钮组 ----
         btn_row = QHBoxLayout()
@@ -657,13 +609,12 @@ class MainWindow(QMainWindow):
         self.title_label.adjustSize()
         self.title_label.move(0, (64 - self.title_label.height()) // 2)
         self.ver_label = QLabel(f"V{self.version}", self.title_box)
-        self.ver_label.setFont(QFont("Microsoft YaHei", 11))
-        self.ver_label.setStyleSheet("color:#aaa;")
+        self.ver_label.setFont(QFont("Microsoft YaHei", 14, QFont.Bold))
+        self.ver_label.setStyleSheet("color:#000;")
         self.ver_label.adjustSize()
         self.ver_label.move(
-            self.title_label.x() + self.title_label.width(),
-            self.title_label.y() + self.title_label.height()
-            - self.ver_label.height() - 1)
+            self.title_label.x() + self.title_label.width() + 8,
+            (64 - self.ver_label.height()) // 2)
 
     def _load_logo(self):
         # 优先用矢量 SVG，任意尺寸都清晰；其次用 ICO
@@ -718,6 +669,16 @@ class MainWindow(QMainWindow):
             QPushButton:hover { background:#f2f2f2; border-color:#999; }
             QPushButton:pressed { padding-top:2px; }
         """)
+
+        # 普通功能按钮（打开台账目录）蓝灰色样式，
+        # 与运行态二态按钮、退出按钮区分，提供 hover 高亮 + 点击下压反馈。
+        link_btn_style = """
+            QPushButton { background:#3a76d8; color:#fff; border:none;
+                          border-radius:6px; font-weight:600; }
+            QPushButton:hover { background:#2f63bc; }
+            QPushButton:pressed { background:#28539e; padding-top:2px; }
+        """
+        self.btn_data_dir.setStyleSheet(link_btn_style)
 
         # 轮询当前 Web 登录用户（每 5 秒）
         self._user_timer = QTimer(self)
@@ -807,16 +768,73 @@ class MainWindow(QMainWindow):
             self.start_service()
 
     def restart_service(self):
-        """重启系统：先停止后台服务，再重新启动。"""
+        """重启系统：先停止后台服务，再重新启动。
+
+        停止是非阻塞的；在后台线程稍等子进程彻底退出、端口释放后，
+        再切回主线程启动，避免阻塞 UI 导致按钮卡死无响应。
+        """
         self.host.stop()
         system_info.reset_cache()
         self._set_running(False)
-        # 稍等子进程彻底退出后再启动，避免端口占用
-        QTimer.singleShot(600, self.start_service)
+
+        def waiter():
+            # 子线程等待，不阻塞 GUI 事件循环
+            time.sleep(0.8)
+            # 切回主线程执行启动
+            QTimer.singleShot(0, self.start_service)
+
+        threading.Thread(target=waiter, daemon=True).start()
 
     def open_system(self):
         """用默认浏览器打开系统页面。"""
         webbrowser.open(SYSTEM_URL)
+
+    def open_data_dir(self):
+        """打开台账数据目录 X:\\QmWorkLog\\Data（即 EXE_DIR/Data）。"""
+        data_dir = os.path.join(BASE, "Data")
+        try:
+            os.makedirs(data_dir, exist_ok=True)
+            os.startfile(data_dir)
+        except Exception as e:
+            QMessageBox.warning(self, "打开失败", f"无法打开台账目录：\n{data_dir}\n{e}")
+
+    def create_desktop_shortcut(self):
+        """手动在桌面创建程序快捷方式（复用首次运行的创建逻辑）。"""
+        exe_path = _app_exe_path()
+        if not getattr(sys, "frozen", False):
+            QMessageBox.information(
+                self, "提示",
+                "当前为开发模式（脚本运行），无需创建快捷方式。\n"
+                "打包为 EXE 后即可使用此功能。")
+            return
+        if not os.path.exists(exe_path) or not exe_path.lower().endswith(".exe"):
+            QMessageBox.warning(self, "创建失败", f"未找到可执行文件：\n{exe_path}")
+            return
+        icon_path = _first_existing(LOGO_PATH, FALLBACK_ICON)
+        name = "乾明工作台账系统"
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        if not os.path.isdir(desktop):
+            QMessageBox.warning(self, "创建失败", f"未找到桌面目录：\n{desktop}")
+            return
+        link = os.path.join(desktop, f"{name}.lnk")
+        ps_lines = ["$ws = New-Object -ComObject WScript.Shell",
+                    f"$sc = $ws.CreateShortcut('{link}')",
+                    f"$sc.TargetPath = '{exe_path}'",
+                    f"$sc.WorkingDirectory = '{BASE}'",
+                    f"$sc.Description = '{name}'"]
+        if icon_path:
+            ps_lines.append(f"$sc.IconLocation = '{icon_path}'")
+        ps_lines.append("$sc.Save()")
+        ps_script = "\n".join(ps_lines)
+        try:
+            subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                 ps_script],
+                capture_output=True, text=True, timeout=30)
+            QMessageBox.information(
+                self, "创建成功", f"已在桌面创建快捷方式：\n{link}")
+        except Exception as e:
+            QMessageBox.warning(self, "创建失败", f"创建快捷方式失败：\n{e}")
 
     def _set_running(self, running):
         """统一设置运行状态：窗口按钮 + 托盘图标/菜单 同步。"""
@@ -831,8 +849,8 @@ class MainWindow(QMainWindow):
     def confirm_exit(self):
         reply = QMessageBox.question(
             self, "退出确认", "确定要退出系统吗？将同时关闭后台服务。",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply == QMessageBox.Yes:
+            QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Cancel)
+        if reply == QMessageBox.Ok:
             self._real_exit()
 
     def _real_exit(self):
@@ -889,40 +907,62 @@ class MainWindow(QMainWindow):
         mem = data.get("mem")
         if mem is not None:
             self.mem_gauge.set_percent(mem)
-        # 磁盘使用率
+        # 磁盘使用率 + 剩余空间
         try:
             import psutil
             du = psutil.disk_usage('/')
             self.disk_gauge.set_percent(du.percent)
+            self.disk_detail_lbl.setText(
+                f"剩 {self._fmt_bytes(du.free)}")
         except Exception:
             pass
-        # 网络流量（上传/下载速度）
+        # 内存已用/总量
         try:
             import psutil
-            nio = psutil.net_io_counters()
+            mv = psutil.virtual_memory()
+            used = self._fmt_bytes(mv.used)
+            total = self._fmt_bytes(mv.total)
+            self.mem_detail_lbl.setText(f"{used}/{total}")
+        except Exception:
+            pass
+        # CPU 温度
+        try:
+            import psutil
+            temps = psutil.sensors_temperatures()
+            cpu_temp = None
+            for key in ("coretemp", "k10temp", "cpu_thermal", "acpitz"):
+                if key in temps and temps[key]:
+                    cpu_temp = temps[key][0].current
+                    break
+            if cpu_temp is not None:
+                self.cpu_temp_lbl.setText(f"温度 {cpu_temp:.0f}°C")
+            else:
+                self.cpu_temp_lbl.setText("温度 N/A")
+        except Exception:
+            self.cpu_temp_lbl.setText("温度 N/A")
+        # 本月 / 历史录入占比（台账总数，缓存 60 秒刷新）
+        try:
             now = time.time()
-            if self._net_io_last is not None:
-                dt = now - self._net_io_ts
-                if dt > 0.1:
-                    up = (nio.bytes_sent - self._net_io_last[0]) / dt
-                    dn = (nio.bytes_recv - self._net_io_last[1]) / dt
-                    self.net_up_lbl.setText(
-                        "↑ " + self._fmt_speed(up))
-                    self.net_down_lbl.setText(
-                        "↓ " + self._fmt_speed(dn))
-                    # 推入心电图，形成滚动波形（上行橙/下行蓝）
-                    self.heartbeat.push(up, dn)
-            self._net_io_last = (nio.bytes_sent, nio.bytes_recv)
-            self._net_io_ts = now
+            if now - getattr(self, '_ratio_ts', 0) > 60:
+                import db
+                s = db.stats_summary()
+                total = s.get('total', 0) or 0
+                month_new = s.get('month_new', 0) or 0
+                pct = (month_new / total * 100.0) if total else 0.0
+                self.ratio_gauge.set_percent(pct)
+                self.ratio_detail_lbl.setText(f"{month_new} / {total}")
+                self._ratio_ts = now
         except Exception:
             pass
 
-    def _fmt_speed(self, bps):
-        if bps >= 1024 * 1024:
-            return f"{bps / (1024 * 1024):.1f} MB/s"
-        if bps >= 1024:
-            return f"{bps / 1024:.1f} KB/s"
-        return f"{bps:.0f} B/s"
+    def _fmt_bytes(self, b):
+        if b >= 1024 * 1024 * 1024:
+            return f"{b / (1024 * 1024 * 1024):.1f}G"
+        if b >= 1024 * 1024:
+            return f"{b / (1024 * 1024):.0f}M"
+        if b >= 1024:
+            return f"{b / 1024:.0f}K"
+        return f"{b:.0f}B"
 
     def _refresh_uptime(self):
         delta = int(time.time() - self.start_ts)
@@ -1019,14 +1059,23 @@ def _warn_no_display():
 
 
 def main():
+    # 冻结模式下，作为 Flask 工作子进程自举运行（由主进程 --flask-worker 拉起）
+    if getattr(sys, "frozen", False) and "--flask-worker" in sys.argv:
+        import app as _flask_app
+        _flask_app.run_server()
+        return
+
     # QApplication 必须先创建，否则目录选择框与提示框无法弹出
     app = QApplication(sys.argv)
+    # 全局字体：统一微软雅黑，避免默认字体发虚、不统一
+    app.setFont(QFont("Microsoft YaHei", 9))
     app.setQuitOnLastWindowClosed(False)  # 关键：关闭窗口不退出，走托盘
 
     _warn_no_display()  # 无显示环境下提前提示，便于用户排查
 
     # 确保位于 QmWorkLog 目录（不在则迁到所选盘符的 QmWorkLog 并重启）
-    if not ensure_run_dir():
+    # 冻结模式下禁用迁移：exe 已自包含，数据目录在 exe 同目录自动创建
+    if not getattr(sys, "frozen", False) and not ensure_run_dir():
         return
 
     # 首次运行 EXE 时，自动在桌面与开始菜单创建快捷方式
