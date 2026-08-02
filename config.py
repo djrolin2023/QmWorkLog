@@ -16,8 +16,8 @@ SECRET_KEY_FILE = os.path.join(BASE, 'secret.key')
 
 DEFAULTS = {
     'system_title': '乾明工作台账系统',
-    'company_short_name': '新东升物业',
-    'customer_name': '嘉应学院丰顺校区',
+    'company_short_name': '乾明工作室',
+    'customer_name': '乾明',
     'company_logo': '',          # 站点 LOGO 的 URL，如 /static/Images/logo.svg
     'docx_logo': '',             # 台账模板中嵌入的 LOGO 文件名（位于 static/Images/）
     # AI 配置（用于 AI 生成智能总结，需用户自行填写 KEY）
