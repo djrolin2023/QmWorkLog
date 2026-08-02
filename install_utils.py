@@ -184,7 +184,7 @@ def _user_desktop_path():
 
 
 def _guid(s):
-    """把 GUID 字符串转成 ctypes 结构（供 IShellLink/IPersistFile 使用）。"""
+    """把 GUID 字符串转成 ctypes 结构（供 SHGetKnownFolderPath 等使用）。"""
     class _G(ctypes.Structure):
         _fields_ = [("Data1", ctypes.c_ulong), ("Data2", ctypes.c_ushort),
                     ("Data3", ctypes.c_ushort), ("Data4", ctypes.c_byte * 8)]
@@ -199,105 +199,65 @@ def _guid(s):
     return g
 
 
-# ---- IShellLink 相关 COM 接口 GUID / 接口 ----
-_CLSID_ShellLink = _guid("{00021401-0000-0000-C000-000000000046}")
-_IID_IShellLinkW = _guid("{000214F9-0000-0000-C000-000000000046}")
-_IID_IPersistFile = _guid("{0000010B-0000-0000-C000-000000000046}")
-
-
-class _IShellLinkW(ctypes.Structure):
-    _fields_ = [("lpVtbl", ctypes.c_void_p)]
-
-
-class _IPersistFile(ctypes.Structure):
-    _fields_ = [("lpVtbl", ctypes.c_void_p)]
-
-
-# COM 初始化引用计数：同一进程内多次创建快捷方式时，
-# 只初始化一次、不重复 CoUninitialize，避免套间状态被破坏。
-_COM_INIT_COUNT = 0
-
-
-def _com_init():
-    global _COM_INIT_COUNT
-    # COINIT_APARTMENTTHREADED = 0x2（IShellLink 需 STA）
-    hr = ctypes.windll.ole32.CoInitializeEx(0, 0x2)
-    if hr == 0 or hr & 0xFFFFFFFF == 0x00000001:  # S_OK 或 S_FALSE(已初始化)
-        _COM_INIT_COUNT += 1
-        return True
-    return False
-
-
-def _com_uninit():
-    global _COM_INIT_COUNT
-    if _COM_INIT_COUNT > 0:
-        ctypes.windll.ole32.CoUninitialize()
-        _COM_INIT_COUNT -= 1
-
-
 def _create_lnk(link_path, target, work_dir, desc, icon):
-    """用 ctypes 直接调用 IShellLink 创建 .lnk（不依赖 PowerShell / WScript.Shell）。
+    """用 PowerShell 的 WScript.Shell COM 创建 .lnk（图标可靠写入）。
 
-    返回 True/False。相比 WScript.Shell COM，IShellLink 在提权进程下
-    行为更可控，且能直接指定写入路径，避免 Save 重定向导致的失败。
+    早期用 ctypes 直接调 IShellLink 在提权进程下 SetIconLocation 写入后
+    被 Save 忽略（读回 IconLocation 为空，导致桌面/开始菜单快捷方式无图标）。
+    WScript.Shell 方案能稳定把 IconLocation 写成 "<exe>,0"，图标取自 exe
+    内嵌资源（PyInstaller 编译进 exe，永久有效，不依赖 _MEIPASS 临时目录）。
+
+    写入路径由调用方传入（已用 _real_user_desktop 定位真实桌面，避免提权
+    下落到不可见目录）。脚本写入临时 .ps1 后用 powershell -File 执行，避免
+    -Command 传递含括号路径解析失败。
     """
-    # 清掉同名旧文件，确保 Save 真正写入（避免误判 exists）
+    # 清掉同名旧文件，确保真正重新写入
     try:
         if os.path.exists(link_path):
             os.remove(link_path)
     except Exception:
         pass
+    # 图标统一指向 exe 自身内嵌图标（icon 参数被忽略，理由同上）
+    icon_loc = "%s,0" % target
+    ps = (
+        "$ErrorActionPreference = 'Stop'\n"
+        "$link = %s\n" % _ps_str(link_path) +
+        "$exe = %s\n" % _ps_str(target) +
+        "$work = %s\n" % _ps_str(work_dir or "") +
+        "$desc = %s\n" % _ps_str(desc or "") +
+        "$icon = %s\n" % _ps_str(icon_loc) +
+        "if (Test-Path $link) { Remove-Item $link -Force }\n"
+        "$ws = New-Object -ComObject WScript.Shell\n"
+        "$s = $ws.CreateShortcut($link)\n"
+        "$s.TargetPath = $exe\n"
+        "$s.WorkingDirectory = $work\n"
+        "$s.Description = $desc\n"
+        "$s.IconLocation = $icon\n"
+        "$s.Save()\n"
+        "if (-not (Test-Path $link)) { exit 1 }\n"
+    )
+    tmp = link_path + ".lnkbuild.tmp.ps1"
     try:
-        if not _com_init():
-            return False
-        psl = ctypes.POINTER(_IShellLinkW)()
-        if ctypes.windll.ole32.CoCreateInstance(
-                ctypes.byref(_CLSID_ShellLink), 0, 1,  # CLSCTX_INPROC_SERVER
-                ctypes.byref(_IID_IShellLinkW),
-                ctypes.byref(psl)) != 0:
-            return False
-        psl_addr = ctypes.cast(psl, ctypes.c_void_p).value
-        vtbl = ctypes.cast(psl.contents.lpVtbl, ctypes.POINTER(ctypes.c_void_p * 20)).contents
-
-        # IShellLinkW 虚表顺序（继承 IUnknown 前 3 个）：
-        # 0 QueryInterface, 1 AddRef, 2 Release
-        # 3 GetPath, 4 GetIDList, 5 SetPath, 6 SetDescription,
-        # 7 SetIDList, 8 SetRelativePath, 9 SetWorkingDirectory,
-        # 10 SetArguments, 11 SetIconLocation, 12 SetShowCmd, ...
-        # 均为 WINAPI（stdcall），必须用 WINFUNCTYPE
-        SetPath = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p)(
-            vtbl[5])
-        SetDescription = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p)(
-            vtbl[6])
-        SetWorkingDirectory = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p)(
-            vtbl[9])
-        SetIconLocation = ctypes.WINFUNCTYPE(
-            ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_int)(
-            vtbl[11])
-
-        SetPath(psl_addr, target)
-        SetDescription(psl_addr, desc or "")
-        SetWorkingDirectory(psl_addr, work_dir or "")
-        if icon:
-            SetIconLocation(psl_addr, icon, 0)
-
-        # 取 IPersistFile 保存
-        ppf = ctypes.POINTER(_IPersistFile)()
-        QueryInterface = ctypes.WINFUNCTYPE(
-            ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)(
-            vtbl[0])
-        if QueryInterface(psl_addr, ctypes.byref(_IID_IPersistFile),
-                          ctypes.byref(ppf)) != 0:
-            return False
-        ppf_vtbl = ctypes.cast(ppf.contents.lpVtbl, ctypes.POINTER(ctypes.c_void_p * 8)).contents
-        Save = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_int)(
-            ppf_vtbl[6])  # 6 = IPersistFile.Save
-        hr = Save(ctypes.cast(ppf, ctypes.c_void_p).value, link_path, 1)
-        return hr == 0 and os.path.exists(link_path)
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(ps)
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+             "-File", tmp],
+            capture_output=True, text=True, timeout=60)
+        return r.returncode == 0 and os.path.exists(link_path)
     except Exception:
         return False
     finally:
-        _com_uninit()
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+
+
+def _ps_str(s):
+    """把 Python 字符串转成 PowerShell 单引号安全字面量。"""
+    return "'" + (s or "").replace("'", "''") + "'"
 
 
 def _create_desktop_windows(exe_path, work_dir, icon_path, name):
