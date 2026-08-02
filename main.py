@@ -63,6 +63,19 @@ FLASK_PORT = 8088
 FLASK_HOST = "127.0.0.1"
 # 系统访问地址
 SYSTEM_URL = f"http://{FLASK_HOST}:{FLASK_PORT}"
+
+
+def _port_in_use(port, host="127.0.0.1"):
+    """判断端口是否已被占用（用于重启时等待旧进程释放端口）。"""
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.3)
+    try:
+        return s.connect_ex((host, port)) == 0
+    finally:
+        s.close()
+
+
 REQUIRED_DIR = "qmworklog"   # 必须在 QmWorkLog 目录运行（大小写不敏感）
 
 # 状态色
@@ -378,6 +391,7 @@ class MainWindow(QMainWindow):
         self.host = FlaskHost()
         self.worker = None
         self.running = False
+        self.restarting = False
         self.tray = None
         self._tray_tip_shown = False
         self.start_ts = time.time()
@@ -768,22 +782,39 @@ class MainWindow(QMainWindow):
             self.start_service()
 
     def restart_service(self):
-        """重启系统：先停止后台服务，再重新启动。
+        """重启系统：先停止后台服务，待端口真正释放后再重新启动。
 
-        停止是非阻塞的；在后台线程稍等子进程彻底退出、端口释放后，
-        再切回主线程启动，避免阻塞 UI 导致按钮卡死无响应。
+        停止是非阻塞的；在后台线程轮询端口直到释放（最多 5s），
+        再切回主线程启动，避免固定sleep导致新进程因端口未释放而启动失败。
+        重启期间禁用按钮并提示“重启中...”，避免重复点击且无交互反馈。
         """
+        if self.restarting:
+            return  # 正在重启，防止重复点击
+        self.restarting = True
+        self.btn_restart.setEnabled(False)
+        self.btn_restart.setText("重启中...")
         self.host.stop()
         system_info.reset_cache()
         self._set_running(False)
 
         def waiter():
-            # 子线程等待，不阻塞 GUI 事件循环
-            time.sleep(0.8)
+            # 子线程轮询等待旧进程退出、端口释放（最多 5 秒）
+            deadline = time.time() + 5
+            while time.time() < deadline:
+                time.sleep(0.2)
+                if not _port_in_use(FLASK_PORT):
+                    break
             # 切回主线程执行启动
-            QTimer.singleShot(0, self.start_service)
+            QTimer.singleShot(0, self._finish_restart)
 
         threading.Thread(target=waiter, daemon=True).start()
+
+    def _finish_restart(self):
+        """重启流程的收尾：在主线程启动服务并恢复按钮状态。"""
+        self.start_service()
+        self.restarting = False
+        self.btn_restart.setEnabled(True)
+        self.btn_restart.setText("重启系统")
 
     def open_system(self):
         """用默认浏览器打开系统页面。"""
