@@ -120,13 +120,9 @@ class GaugeWidget(QWidget):
 
 
 class HeartbeatWidget(QWidget):
-    """网络流量心电图：自绘滚动折线图（类似心电图/示波器）。
+    """网络流量波形图：浅色背景滚动折线，与窗口风格统一。"""
 
-    维护上传/下载速度历史队列，每次 push 新速率后整体左移重绘，
-    形成从左到右滚动的波形曲线。上行用橙色，下行用蓝色。
-    """
-
-    def __init__(self, width=120, height=46, max_points=60):
+    def __init__(self, width=160, height=52, max_points=60):
         super().__init__()
         self.setFixedSize(width, height)
         self._w = width
@@ -134,28 +130,27 @@ class HeartbeatWidget(QWidget):
         self._max = max_points
         self._up = [0.0] * max_points
         self._dn = [0.0] * max_points
-        self._peak = 1.0  # 用于纵向缩放的峰值（动态）
+        self._peak = 1.0
 
     def push(self, up, dn):
-        """推入新的上传/下载速率（bytes/s），整体左移重绘。"""
         self._up.append(float(up))
         self._up.pop(0)
         self._dn.append(float(dn))
         self._dn.pop(0)
         peak = max(self._up + self._dn + [1.0])
-        self._peak = max(self._peak * 0.9, peak)  # 平滑跟随，避免跳变
+        self._peak = max(self._peak * 0.9, peak)
         self.update()
 
-    def _draw_series(self, painter, series, color):
-        from PyQt5.QtGui import QColor, QPen
-        from PyQt5.QtCore import Qt as QTC
+    def _draw_series(self, painter, series, color, fill_alpha=35):
+        from PyQt5.QtGui import QColor, QPen, QBrush, QPolygon
+        from PyQt5.QtCore import Qt as QTC, QPoint
         n = len(series)
         if n < 2:
             return
-        mid = self._h / 2.0
-        # 以峰值归一化，留出上下边距
-        scale = (self._h / 2.0 - 3.0) / self._peak
-        pen = QPen(QColor(color), 1.6)
+        mid = int(self._h / 2.0)
+        scale = (self._h / 2.0 - 5.0) / self._peak
+        # 折线（加粗）
+        pen = QPen(QColor(color), 2.2)
         pen.setCapStyle(QTC.RoundCap)
         pen.setJoinStyle(QTC.RoundJoin)
         painter.setPen(pen)
@@ -165,15 +160,25 @@ class HeartbeatWidget(QWidget):
             x = int(i * step)
             y = int(mid - v * scale)
             pts.append((x, y))
-        # 折线
         for i in range(1, len(pts)):
             painter.drawLine(pts[i - 1][0], pts[i - 1][1],
                              pts[i][0], pts[i][1])
-        # 末端亮点（当前值）
+        # 半透明填充到底边
+        poly = QPolygon()
+        for x, y in pts:
+            poly.append(QPoint(x, y))
+        poly.append(QPoint(self._w, mid))
+        poly.append(QPoint(0, mid))
+        painter.setPen(QTC.NoPen)
+        c = QColor(color)
+        c.setAlpha(fill_alpha)
+        painter.setBrush(QBrush(c))
+        painter.drawPolygon(poly)
+        # 末端亮点
         last = pts[-1]
         painter.setBrush(QColor(color))
         painter.setPen(QColor(color))
-        painter.drawEllipse(int(last[0] - 1.5), int(last[1] - 1.5), 3, 3)
+        painter.drawEllipse(int(last[0] - 2.5), int(last[1] - 2.5), 5, 5)
 
     def paintEvent(self, event):
         from PyQt5.QtGui import QPainter, QColor, QPen
@@ -181,16 +186,21 @@ class HeartbeatWidget(QWidget):
         super().paintEvent(event)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        # 背景
-        painter.fillRect(self.rect(), QColor("#0f1b2d"))
+        # 浅色背景（与窗口融合）
+        painter.fillRect(self.rect(), QColor("#f5f5f5"))
+        # 边框
+        pen = QPen(QColor("#d0d0d0"), 1)
+        painter.setPen(pen)
+        painter.drawRect(0, 0, self._w - 1, self._h - 1)
         # 中线
-        pen = QPen(QColor("#233a55"), 1)
+        mid = int(self._h / 2)
+        pen = QPen(QColor("#cccccc"), 1)
         pen.setStyle(QTC.DashLine)
         painter.setPen(pen)
-        painter.drawLine(0, int(self._h / 2), self._w, int(self._h / 2))
+        painter.drawLine(0, mid, self._w, mid)
         # 波形：上行（橙）/下行（蓝）
-        self._draw_series(painter, self._up, "#e67e22")
-        self._draw_series(painter, self._dn, "#2980b9")
+        self._draw_series(painter, self._up, "#e67e22", fill_alpha=40)
+        self._draw_series(painter, self._dn, "#2980b9", fill_alpha=40)
         painter.end()
 
 
@@ -568,7 +578,7 @@ class MainWindow(QMainWindow):
         net_col = QVBoxLayout()
         net_col.setSpacing(3)
         net_col.setAlignment(Qt.AlignCenter)
-        self.heartbeat = HeartbeatWidget(width=120, height=44, max_points=60)
+        self.heartbeat = HeartbeatWidget(width=160, height=52, max_points=60)
         net_col.addWidget(self.heartbeat)
         self.net_up_lbl = QLabel("↑ 0 KB/s")
         self.net_down_lbl = QLabel("↓ 0 KB/s")
