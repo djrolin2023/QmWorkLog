@@ -42,6 +42,7 @@ ROOT = BASE
 VERSION_FILE = os.path.join(BASE, "version.json")
 IMG_DIR = os.path.join(BASE, "static", "Images")
 LOGO_PATH = os.path.join(IMG_DIR, "logo.ico")           # 主图标（彩色）
+LOGO_SVG = os.path.join(IMG_DIR, "logo.svg")             # 矢量 LOGO（清晰）
 ICON_RUN = os.path.join(IMG_DIR, "logo.ico")            # 运行中：彩色
 ICON_STOP = os.path.join(IMG_DIR, "logo_gray.ico")      # 已停止：灰色
 FALLBACK_ICON = os.path.join(IMG_DIR, "favicon.ico")
@@ -653,9 +654,15 @@ class MainWindow(QMainWindow):
         self._apply_style()
 
     def _load_logo(self):
-        path = _first_existing(LOGO_PATH, FALLBACK_ICON)
+        # 优先用矢量 SVG，任意尺寸都清晰；其次用 ICO
+        path = _first_existing(LOGO_SVG, LOGO_PATH, FALLBACK_ICON)
         icon = QIcon(path) if path else QIcon()
-        pix = icon.pixmap(64, 64)
+        # 用设备像素比渲染，提升清晰度
+        from PyQt5.QtCore import QSize
+        dpr = self.logo_label.devicePixelRatioF() or 1.0
+        base = 64
+        pix = icon.pixmap(QSize(base, base) * dpr)
+        pix.setDevicePixelRatio(dpr)
         if pix.isNull():
             # 用文字兜底
             self.logo_label.setText("QM")
