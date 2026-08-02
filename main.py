@@ -20,6 +20,7 @@ import warnings
 
 import system_info
 from flask_host import FlaskHost
+import install_utils as iu
 
 warnings.filterwarnings("ignore", message=".*sipPyTypeDict.*")
 
@@ -288,47 +289,13 @@ def create_shortcuts_once():
         return
 
     exe_path = _app_exe_path()
-    if not os.path.exists(exe_path) or not exe_path.lower().endswith(".exe"):
+    if not os.path.exists(exe_path):
         return
 
     icon_path = _first_existing(LOGO_PATH, FALLBACK_ICON)
-    name = "乾明工作台账系统"
-
-    # 桌面路径
-    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-    # 开始菜单「程序」目录
-    start_menu = os.path.join(
-        os.environ.get("PROGRAMDATA",
-                       r"C:\ProgramData"),
-        "Microsoft", "Windows", "Start Menu", "Programs")
-
-    targets = []
-    if os.path.isdir(desktop):
-        targets.append(os.path.join(desktop, f"{name}.lnk"))
-    if os.path.isdir(start_menu):
-        targets.append(os.path.join(start_menu, f"{name}.lnk"))
-
-    if not targets:
-        return
-
-    # 用 PowerShell 生成 .lnk（WScript.Shell COM）
-    ps_lines = ["$ws = New-Object -ComObject WScript.Shell"]
-    for link in targets:
-        esc = link.replace("'", "\\'")
-        ps_lines.append(f"$sc = $ws.CreateShortcut('{esc}')")
-        ps_lines.append(f"$sc.TargetPath = '{exe_path}'")
-        ps_lines.append(f"$sc.WorkingDirectory = '{BASE}'")
-        ps_lines.append(f"$sc.Description = '{name}'")
-        if icon_path:
-            ps_lines.append(f"$sc.IconLocation = '{icon_path}'")
-        ps_lines.append("$sc.Save()")
-    ps_script = "\n".join(ps_lines)
 
     try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-NonInteractive", "-Command",
-             ps_script],
-            capture_output=True, text=True, timeout=30)
+        iu.create_shortcuts(exe_path, BASE, icon_path, "乾明工作台账系统")
         # 写标记文件，避免下次重复创建
         with open(marker, "w", encoding="utf-8") as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -832,40 +799,25 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "打开失败", f"无法打开台账目录：\n{data_dir}\n{e}")
 
     def create_desktop_shortcut(self):
-        """手动在桌面创建程序快捷方式（复用首次运行的创建逻辑）。"""
+        """手动创建程序快捷方式（复用首次运行的跨平台创建逻辑）。"""
         exe_path = _app_exe_path()
         if not getattr(sys, "frozen", False):
             QMessageBox.information(
                 self, "提示",
                 "当前为开发模式（脚本运行），无需创建快捷方式。\n"
-                "打包为 EXE 后即可使用此功能。")
+                "打包为可执行文件后即可使用此功能。")
             return
-        if not os.path.exists(exe_path) or not exe_path.lower().endswith(".exe"):
+        if not os.path.exists(exe_path):
             QMessageBox.warning(self, "创建失败", f"未找到可执行文件：\n{exe_path}")
             return
         icon_path = _first_existing(LOGO_PATH, FALLBACK_ICON)
-        name = "乾明工作台账系统"
-        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        if not os.path.isdir(desktop):
-            QMessageBox.warning(self, "创建失败", f"未找到桌面目录：\n{desktop}")
-            return
-        link = os.path.join(desktop, f"{name}.lnk")
-        ps_lines = ["$ws = New-Object -ComObject WScript.Shell",
-                    f"$sc = $ws.CreateShortcut('{link}')",
-                    f"$sc.TargetPath = '{exe_path}'",
-                    f"$sc.WorkingDirectory = '{BASE}'",
-                    f"$sc.Description = '{name}'"]
-        if icon_path:
-            ps_lines.append(f"$sc.IconLocation = '{icon_path}'")
-        ps_lines.append("$sc.Save()")
-        ps_script = "\n".join(ps_lines)
         try:
-            subprocess.run(
-                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                 ps_script],
-                capture_output=True, text=True, timeout=30)
-            QMessageBox.information(
-                self, "创建成功", f"已在桌面创建快捷方式：\n{link}")
+            created = iu.create_shortcuts(exe_path, BASE, icon_path, "乾明工作台账系统")
+            if created:
+                QMessageBox.information(
+                    self, "创建成功", "已创建启动入口：\n" + "\n".join(created))
+            else:
+                QMessageBox.warning(self, "创建失败", "未能创建任何启动入口。")
         except Exception as e:
             QMessageBox.warning(self, "创建失败", f"创建快捷方式失败：\n{e}")
 

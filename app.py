@@ -1631,6 +1631,24 @@ def api_user_reset(name):
     return jsonify(ok=ok, msg=msg)
 
 
+def _print_access_urls(host, port):
+    """打印本机可访问的系统地址（含局域网 IP），方便用户直接打开。"""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        lan = s.getsockname()[0]
+        s.close()
+    except Exception:
+        lan = '127.0.0.1'
+    print('=' * 52)
+    print(' 乾明工作台账系统已启动')
+    print(' 本机访问：  http://127.0.0.1:%d' % port)
+    print(' 局域网访问：http://%s:%d' % (lan, port))
+    print(' 按 Ctrl+C 停止服务')
+    print('=' * 52)
+
+
 def run_server():
     """初始化并启动 Flask 服务（供 __main__ 与 PyInstaller worker 子进程共用）。"""
     import time as _t
@@ -1643,8 +1661,15 @@ def run_server():
     print('[启动] 数据库初始化完成 (%.2fs)' % (_t.time() - _t0))
     # 关闭 debug/reloader：避免 fork 子进程导致 init_db 与全量文件扫描执行两遍，
     # 这是启动慢的主因。如需热重载开发，可临时设 debug=True。
+    _print_access_urls('0.0.0.0', 8088)
     app.run(host='0.0.0.0', port=8088, debug=False, use_reloader=False)
 
 
 if __name__ == '__main__':
     run_server()
+    # 脚本直接运行时（python app.py）自动打开浏览器，exe 模式由主程序控制不重复
+    try:
+        import webbrowser
+        webbrowser.open('http://127.0.0.1:8088')
+    except Exception:
+        pass

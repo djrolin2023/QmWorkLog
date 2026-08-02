@@ -1,7 +1,7 @@
 {
   "date": "26.08.02",
-  "seq": 105,
-  "version": "26.08.02.105",
+  "seq": 107,
+  "version": "26.08.02.107",
   "history": [
     {
       "date": "26.08.01",
@@ -296,6 +296,18 @@
       "ver": "26.08.02.105",
       "type": "minor",
       "reason": "新增内置安装向导打包方案: installer.py(Qt向导 许可协议/默认路径D:\\\\QmWorkLog/快捷方式) + build_installer.bat; 修复PyInstaller单文件模式EXE_DIR用argv[0]避免用户数据落入临时目录; 新增MIT风格中文许可协议LICENSE_INSTALL.txt"
+    },
+    {
+      "date": "26.08.02",
+      "ver": "26.08.02.106",
+      "type": "minor",
+      "reason": "修复安装向导卡死/右键屏蔽/全中文，关于系统与使用手册新增运行环境要求"
+    },
+    {
+      "date": "26.08.02",
+      "ver": "26.08.02.107",
+      "type": "minor",
+      "reason": "使用手册运行环境置顶+各系统获取说明，关于系统运行环境去(补)并补充源码拉取，app.py打印访问地址"
     }
   ]
 }

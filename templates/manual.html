@@ -5,28 +5,85 @@
 <section class="settings-wrap">
   <div class="settings-page-head">
     <h1>使用手册</h1>
-    <p>本手册帮助用户快速掌握乾明工作台账系统的各项功能，从登录、录入台账到智能总结、归档备份，按章节对照查阅即可上手。</p>
+    <p>本手册帮助用户快速掌握乾明工作台账系统的各项功能，从运行环境、获取安装到登录、录入台账与智能总结，按章节对照查阅即可上手。</p>
   </div>
 
   <div class="settings-layout about-layout">
     <!-- 左侧章节导航 -->
     <aside class="settings-nav about-nav">
-      <a class="settings-nav-item active" href="#sec-1">登录与基本操作</a>
-      <a class="settings-nav-item" href="#sec-2">工作台账录入</a>
-      <a class="settings-nav-item" href="#sec-3">台账管理</a>
-      <a class="settings-nav-item" href="#sec-4">智能总结</a>
-      <a class="settings-nav-item" href="#sec-5">数据大屏</a>
-      <a class="settings-nav-item" href="#sec-6">归档管理</a>
-      <a class="settings-nav-item" href="#sec-7">导入导出</a>
-      <a class="settings-nav-item" href="#sec-8">用户与权限</a>
-      <a class="settings-nav-item" href="#sec-9">系统设置</a>
-      <a class="settings-nav-item" href="#sec-10">常见问题</a>
+      <a class="settings-nav-item active" href="#sec-1">运行环境要求</a>
+      <a class="settings-nav-item" href="#sec-2">各系统如何获取本系统</a>
+      <a class="settings-nav-item" href="#sec-3">登录与基本操作</a>
+      <a class="settings-nav-item" href="#sec-4">工作台账录入</a>
+      <a class="settings-nav-item" href="#sec-5">台账管理</a>
+      <a class="settings-nav-item" href="#sec-6">智能总结</a>
+      <a class="settings-nav-item" href="#sec-7">数据大屏</a>
+      <a class="settings-nav-item" href="#sec-8">归档管理</a>
+      <a class="settings-nav-item" href="#sec-9">导入导出</a>
+      <a class="settings-nav-item" href="#sec-10">用户与权限</a>
+      <a class="settings-nav-item" href="#sec-11">系统设置</a>
+      <a class="settings-nav-item" href="#sec-12">常见问题</a>
     </aside>
 
     <!-- 右侧内容 -->
     <div class="settings-panels about-panels">
       <section class="about-chapter" id="sec-1">
-        <h2>一、登录与基本操作</h2>
+        <h2>一、运行环境要求</h2>
+        <p>本系统为单机桌面应用，对硬件要求较低。安装前请确认设备满足以下<strong>最低配置</strong>，若用于日常多用户台账量较大的场景建议参考<strong>建议配置</strong>：</p>
+        <div class="perm-table-wrap">
+          <table class="perm-table spec-table">
+            <thead>
+              <tr><th>项目</th><th>最低配置</th><th>建议配置</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>操作系统</td><td>Windows 7 / 8 / 10 / 11（64 位）<br>Linux（amd64，如 Ubuntu 20.04+）<br>macOS 11 及以上</td><td>Windows 10 / 11（64 位）<br>Ubuntu 22.04 LTS<br>macOS 13 及以上</td></tr>
+              <tr><td>CPU</td><td>双核 1.5 GHz 及以上</td><td>四核 2.0 GHz 及以上</td></tr>
+              <tr><td>内存</td><td>2 GB</td><td>4 GB 及以上</td></tr>
+              <tr><td>硬盘空间</td><td>可用 500 MB（含数据与图片）</td><td>可用 2 GB 及以上</td></tr>
+              <tr><td>显示分辨率</td><td>1366 × 768</td><td>1920 × 1080 及以上</td></tr>
+              <tr><td>浏览器</td><td>Chrome / Edge / Firefox 近两个大版本</td><td>Chrome / Edge 最新稳定版</td></tr>
+              <tr><td>其他依赖</td><td>无需额外运行库；安装包已内置全部依赖</td><td>同左</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notice-grid">
+          <div class="notice-item"><h3>① 安装路径</h3><p>默认安装到 <code>D:\QmWorkLog</code>（若计算机无 D 盘，则自动改为 <code>C:\QmWorkLog</code>）。程序仅读写自身目录，无需管理员权限。</p></div>
+          <div class="notice-item"><h3>② 数据规模</h3><p>台账与图片越多占用空间越大，建议定期归档与备份，避免磁盘写满。</p></div>
+          <div class="notice-item"><h3>③ 网络</h3><p>纯本地应用，无需联网即可运行；仅更新下载、扫码联系等需访问外网。</p></div>
+        </div>
+      </section>
+
+      <section class="about-chapter" id="sec-2">
+        <h2>二、各系统如何获取本系统</h2>
+        <p>本系统提供编译好的安装包与源代码两种方式获取，按所用操作系统选择即可。</p>
+
+        <h3>Windows</h3>
+        <ol class="guide-steps">
+          <li><strong>安装包（推荐）</strong>：下载 <code>QmWorkLog_vX.X.X.X.exe</code>，双击运行，按向导选择安装目录（默认 <code>D:\QmWorkLog</code>）即可。</li>
+          <li><strong>便携版</strong>：下载解压后直接运行 <code>QmWorkLog.exe</code>，数据自动保存在程序所在目录，可放在 U 盘随身携带。</li>
+          <li><strong>源码运行</strong>：克隆仓库后，使用 Python 3.10+ 创建虚拟环境并安装依赖，执行 <code>python app.py</code> 启动服务（见下方「从源码获取」）。</li>
+        </ol>
+
+        <h3>Linux（Debian / Ubuntu 等）</h3>
+        <ol class="guide-steps">
+          <li><strong>deb 包</strong>：下载 <code>QmWorkLog_X.X.X.X_amd64.deb</code>，执行 <code>sudo dpkg -i QmWorkLog_X.X.X.X_amd64.deb</code> 安装，菜单或命令 <code>qmworklog</code> 启动。</li>
+          <li><strong>源码运行</strong>：安装 <code>python3-venv</code>、<code>python3-pip</code>，克隆仓库后 <code>pip install -r requirements.txt</code>，再 <code>python3 app.py</code>。</li>
+        </ol>
+
+        <h3>macOS</h3>
+        <ol class="guide-steps">
+          <li><strong>dmg 包</strong>：下载 <code>QmWorkLog-X.X.X.X.dmg</code>，打开后将 <code>QmWorkLog.app</code> 拖入「应用程序」即可。</li>
+          <li><strong>源码运行</strong>：安装 Homebrew 与 Python 3，克隆仓库后 <code>pip install -r requirements.txt</code>，再 <code>python3 app.py</code>。</li>
+        </ol>
+
+        <div class="notice-grid">
+          <div class="notice-item"><h3>① 从源码获取</h3><p>本项目托管于 GitHub（<code>https://github.com/djrolin2023/QmWorkLog</code>）。拉取命令：<br><code>git clone https://github.com/djrolin2023/QmWorkLog.git</code><br>进入目录后 <code>git pull</code> 可获取最新更新。</p></div>
+          <div class="notice-item"><h3>② 下载地址</h3><p>正式发布的安装包见 GitHub 仓库的 <strong>Releases</strong> 页面，源码见仓库主分支。</p></div>
+        </div>
+      </section>
+
+      <section class="about-chapter" id="sec-3">
+        <h2>三、登录与基本操作</h2>
         <ol class="guide-steps">
           <li><strong>打开系统</strong>：在浏览器输入系统地址（局域网或外网地址）进入登录页。</li>
           <li><strong>账号登录</strong>：输入账号与密码。默认管理员账号 <code>admin / admin</code>，<b>首次使用请务必修改密码</b>。</li>
@@ -36,8 +93,8 @@
         </ol>
       </section>
 
-      <section class="about-chapter" id="sec-2">
-        <h2>二、工作台账录入</h2>
+      <section class="about-chapter" id="sec-4">
+        <h2>四、工作台账录入</h2>
         <p>台账是系统的核心数据，按"类型 + 日期"组织一条工作记录。</p>
         <ol class="guide-steps">
           <li>在左侧菜单点击<strong>「工作台账」</strong>，进入台账页。</li>
@@ -51,8 +108,8 @@
         </div>
       </section>
 
-      <section class="about-chapter" id="sec-3">
-        <h2>三、台账管理</h2>
+      <section class="about-chapter" id="sec-5">
+        <h2>五、台账管理</h2>
         <p>在<strong>「台账管理」</strong>中维护台账类型（如新增"消防演练""访客登记"等）。</p>
         <ol class="guide-steps">
           <li>点击<strong>新增类型</strong>，填写类型名称与说明。</li>
@@ -61,8 +118,8 @@
         </ol>
       </section>
 
-      <section class="about-chapter" id="sec-4">
-        <h2>四、智能总结</h2>
+      <section class="about-chapter" id="sec-6">
+        <h2>六、智能总结</h2>
         <p>基于台账内容自动生成周期总结，减少手工汇总工作量。</p>
         <ol class="guide-steps">
           <li>进入<strong>「智能总结」</strong>，选择类型、年份与周期（年度 / 月度 / 自定义）。</li>
@@ -71,8 +128,8 @@
         </ol>
       </section>
 
-      <section class="about-chapter" id="sec-5">
-        <h2>五、数据大屏</h2>
+      <section class="about-chapter" id="sec-7">
+        <h2>七、数据大屏</h2>
         <p><strong>「数据大屏」</strong>以可视化方式呈现整体情况，打开即自动同步索引。</p>
         <ol class="guide-steps">
           <li>环形占比：各类型台账占比一目了然。</li>
@@ -82,8 +139,8 @@
         </ol>
       </section>
 
-      <section class="about-chapter" id="sec-6">
-        <h2>六、归档管理</h2>
+      <section class="about-chapter" id="sec-8">
+        <h2>八、归档管理</h2>
         <p>对历史台账按需归档，便于长期保存与恢复。</p>
         <ol class="guide-steps">
           <li>在<strong>「归档管理」</strong>中选择类型与年份执行归档。</li>
@@ -92,8 +149,8 @@
         </ol>
       </section>
 
-      <section class="about-chapter" id="sec-7">
-        <h2>七、导入导出</h2>
+      <section class="about-chapter" id="sec-9">
+        <h2>九、导入导出</h2>
         <p>用于数据备份、交接与上报。</p>
         <ol class="guide-steps">
           <li><strong>整库备份</strong>：导出完整数据库文件，建议定期执行并异地留存。</li>
@@ -105,8 +162,8 @@
         </div>
       </section>
 
-      <section class="about-chapter" id="sec-8">
-        <h2>八、用户与权限</h2>
+      <section class="about-chapter" id="sec-10">
+        <h2>十、用户与权限</h2>
         <p>系统分<strong>管理员</strong>与<strong>普通用户</strong>两类角色。</p>
         <div class="perm-table-wrap">
           <table class="perm-table">
@@ -123,8 +180,8 @@
         <p>在<strong>「用户管理」</strong>中由管理员维护账号、重置密码与权限。</p>
       </section>
 
-      <section class="about-chapter" id="sec-9">
-        <h2>九、系统设置</h2>
+      <section class="about-chapter" id="sec-11">
+        <h2>十一、系统设置</h2>
         <p>集中维护公司与品牌信息、基础参数。</p>
         <ol class="guide-steps">
           <li>进入<strong>「系统设置」</strong>，修改公司名称、LOGO 等展示信息。</li>
@@ -132,8 +189,8 @@
         </ol>
       </section>
 
-      <section class="about-chapter about-notice" id="sec-10">
-        <h2>十、常见问题</h2>
+      <section class="about-chapter about-notice" id="sec-12">
+        <h2>十二、常见问题</h2>
         <div class="notice-grid">
           <div class="notice-item"><h3>① 打不开系统</h3><p>确认服务已启动；检查浏览器地址与端口是否正确（默认 8088）。</p></div>
           <div class="notice-item"><h3>② 样式错乱</h3><p>强制刷新（Ctrl+F5）一次；静态资源带版本号会自动更新。</p></div>

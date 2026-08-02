@@ -19,13 +19,15 @@ from PyQt5.QtWidgets import (
     QWizard, QWizardPage, QVBoxLayout, QHBoxLayout, QTextEdit, QCheckBox,
     QLabel, QLineEdit, QPushButton, QFileDialog, QProgressBar, QMessageBox,
 )
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import QApplication
 
-APP_NAME = "乾明工作台账系统"
-DEFAULT_DIR = r"D:\QmWorkLog"
-MAIN_EXE_NAME = "QmWorkLog.exe"
+import install_utils as iu
+
+APP_NAME = iu.APP_NAME
+DEFAULT_DIR = iu.default_install_dir()
+MAIN_EXE_NAME = iu._main_bin_name()
 LICENSE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LICENSE_INSTALL.txt")
 
 
@@ -123,15 +125,39 @@ class InstallWorker(QThread):
         super().__init__()
         self.target_dir = target_dir
 
+    def _find_main_exe(self):
+        """在多种可能位置查找内嵌主程序，返回首个存在的绝对路径。"""
+        candidates = [
+            _resource(MAIN_EXE_NAME),
+            os.path.join(getattr(sys, "_MEIPASS", ""), MAIN_EXE_NAME),
+            os.path.join(os.path.dirname(os.path.abspath(sys.executable)), MAIN_EXE_NAME),
+            os.path.join(os.getcwd(), MAIN_EXE_NAME),
+        ]
+        for c in candidates:
+            if c and os.path.exists(c):
+                return c
+        return None
+
+    def _safe_makedirs(self, path):
+        """创建目录；若盘符不可写，回退到用户主目录（最终兜底）。"""
+        try:
+            os.makedirs(path, exist_ok=True)
+            return path
+        except Exception:
+            fallback = os.path.join(os.path.expanduser("~"), "QmWorkLog")
+            os.makedirs(fallback, exist_ok=True)
+            return fallback
+
     def run(self):
         try:
-            target = self.target_dir
-            os.makedirs(target, exist_ok=True)
+            target = self._safe_makedirs(self.target_dir)
 
             # 主程序 exe（由 PyInstaller add-binary 嵌入）
-            src_exe = _resource(MAIN_EXE_NAME)
-            if not os.path.exists(src_exe):
-                self.finished.emit(False, "未找到主程序文件：%s" % src_exe)
+            src_exe = self._find_main_exe()
+            if not src_exe:
+                self.finished.emit(
+                    False,
+                    "未找到主程序文件（%s）。请确认安装包完整，或重新下载安装程序。" % MAIN_EXE_NAME)
                 return
             self.progress.emit(20, "正在复制主程序...")
             dst_exe = os.path.join(target, MAIN_EXE_NAME)
@@ -141,38 +167,18 @@ class InstallWorker(QThread):
             self.progress.emit(60, "正在创建快捷方式...")
             self._create_shortcuts(dst_exe, target)
 
-            self.progress.emit(100, "安装完成")
+            self.progress.emit(100, "安装完成，目标目录：%s" % target)
             self.finished.emit(True, target)
         except Exception as e:
             self.finished.emit(False, "安装失败：%s" % e)
 
     def _create_shortcuts(self, exe_path, work_dir):
-        """用 PowerShell + WScript.Shell 创建桌面与开始菜单快捷方式。"""
-        name = APP_NAME
+        """按平台创建快捷方式/启动入口（Windows .lnk / macOS .app / Linux .desktop）。"""
         icon_path = _resource("static\\Images\\logo.ico")
-        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        start_menu = os.path.join(os.environ.get("ProgramData", "C:\\ProgramData"),
-                                  "Microsoft\\Windows\\Start Menu\\Programs")
-        for base in (desktop, start_menu):
-            if not os.path.isdir(base):
-                continue
-            link = os.path.join(base, "%s.lnk" % name)
-            ps = [
-                "$ws = New-Object -ComObject WScript.Shell",
-                "$sc = $ws.CreateShortcut('%s')" % link,
-                "$sc.TargetPath = '%s'" % exe_path,
-                "$sc.WorkingDirectory = '%s'" % work_dir,
-                "$sc.Description = '%s'" % name,
-            ]
-            if icon_path and os.path.exists(icon_path):
-                ps.append("$sc.IconLocation = '%s'" % icon_path)
-            ps.append("$sc.Save()")
-            try:
-                subprocess.run(["powershell", "-NoProfile", "-NonInteractive",
-                                "-Command", "\n".join(ps)],
-                               capture_output=True, text=True, timeout=30)
-            except Exception:
-                pass
+        try:
+            iu.create_shortcuts(exe_path, work_dir, icon_path, APP_NAME)
+        except Exception:
+            pass
 
 
 class InstallPage(QWizardPage):
@@ -188,12 +194,19 @@ class InstallPage(QWizardPage):
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         self.worker = None
-        self._done = False
+        self._done = False      # 安装成功
+        self._failed = False    # 安装失败（也允许离开页面）
 
     def initializePage(self):
         target = self.field("targetDir")
         self.bar.setValue(0)
-        self.status.setText("目标目录：%s" % target)
+        self._done = False
+        self._failed = False
+        self.status.setText("正在准备安装...\n目标目录：%s" % target)
+        # 安装进行中禁用“下一步/完成”，防止中途离开
+        btn = self.wizard().button(QWizard.NextButton)
+        if btn:
+            btn.setEnabled(False)
         self.worker = InstallWorker(target)
         self.worker.progress.connect(self._on_progress)
         self.worker.finished.connect(self._on_finished)
@@ -205,13 +218,30 @@ class InstallPage(QWizardPage):
 
     def _on_finished(self, ok, msg):
         self._done = ok
+        self._failed = not ok
         self.status.setText(msg)
+        self.bar.setValue(100 if ok else self.bar.value())
+        # 安装结束（成功或失败）后恢复“下一步”按钮
+        btn = self.wizard().button(QWizard.NextButton)
+        if btn:
+            btn.setEnabled(True)
         self.completeChanged.emit()
+        if not ok:
+            # 安装失败：提示用户并关闭向导（不进入完成页）
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(0, lambda: (
+                QMessageBox.critical(self, "安装失败", msg),
+                self.wizard().reject(),
+            ))
 
     def isComplete(self):
-        return self._done
+        # 安装成功可进入完成页；安装失败也允许“完成”退出向导
+        return self._done or self._failed
 
     def validatePage(self):
+        if self._failed:
+            # 安装失败时，若用户点“完成”，给出提示后允许退出（不进入完成页）
+            return True
         return self._done
 
 
@@ -252,6 +282,8 @@ class InstallWizard(QWizard):
         super().__init__(parent)
         self.setWindowTitle("%s 安装向导" % APP_NAME)
         self.setWizardStyle(QWizard.ModernStyle)
+        # 屏蔽整个安装向导的右键菜单
+        self.setContextMenuPolicy(Qt.NoContextMenu)
         icon_path = _resource("static\\Images\\logo.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
@@ -262,6 +294,17 @@ class InstallWizard(QWizard):
         self.addPage(PathPage())
         self.addPage(InstallPage())
         self.addPage(FinishPage())
+
+        # 统一按钮中文
+        self.setButtonText(QWizard.NextButton, "下一步")
+        self.setButtonText(QWizard.BackButton, "上一步")
+        self.setButtonText(QWizard.CancelButton, "取消")
+        self.setButtonText(QWizard.FinishButton, "完成")
+        self.setButtonText(QWizard.CommitButton, "开始安装")
+
+        # 所有页面统一屏蔽右键菜单
+        for pid in self.pageIds():
+            self.page(pid).setContextMenuPolicy(Qt.NoContextMenu)
 
 
 def main():

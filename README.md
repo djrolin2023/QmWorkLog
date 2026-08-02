@@ -86,6 +86,56 @@ python app.py
 
 ---
 
+## 打包与分发
+
+> PyInstaller **不能跨平台打包**：在哪个系统上运行，就只能打出该平台的包。跨平台安装逻辑已抽象在 `install_utils.py`（快捷方式 / 启动入口按 Windows / macOS / Linux 分支处理）。
+
+### Windows（.exe 安装包）
+
+```bat
+build_installer.bat
+```
+
+产物（自动带版本号，例如 `26.08.02.105`）：
+
+- `QmWorkLog_v<ver>.exe` — 程序本体，老用户直接覆盖即可；
+- `QmWorkLog_Setup_v<ver>.exe` — 内置安装向导（许可协议 → 默认 `D:\QmWorkLog` → 释放程序 + 建快捷方式）。
+
+### Linux（.deb）
+
+在 Debian/Ubuntu 本机执行：
+
+```bash
+sudo apt install python3-venv python3-pip dpkg fakeroot
+python3 -m venv QmWorkLog-venv && source QmWorkLog-venv/bin/activate
+pip install -r requirements.txt pyinstaller
+bash build_linux.sh
+```
+
+产出 `QmWorkLog_<ver>_amd64.deb`：
+
+```bash
+sudo dpkg -i QmWorkLog_<ver>_amd64.deb      # 安装
+sudo /opt/qmworklog/uninstall.sh            # 卸载
+```
+
+### macOS（.dmg）
+
+在 macOS 本机执行：
+
+```bash
+brew install python3
+python3 -m venv QmWorkLog-venv && source QmWorkLog-venv/bin/activate
+pip install -r requirements.txt pyinstaller
+bash build_mac.sh
+```
+
+产出 `QmWorkLog-<ver>.dmg`，打开后将 `QmWorkLog.app` 拖入「应用程序」即可。
+
+> 注：Linux 默认安装目录 `~/.local/QmWorkLog`、macOS 为 `~/Applications/QmWorkLog`（GUI 向导默认路径见 `install_utils.default_install_dir`）。
+
+---
+
 ## 默认账号
 
 | 角色 | 账号 | 密码 |

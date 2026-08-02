@@ -15,6 +15,7 @@
       <a class="settings-nav-item" href="#sec-3">功能介绍</a>
       <a class="settings-nav-item" href="#sec-4">系统特色</a>
       <a class="settings-nav-item" href="#sec-5">技术栈</a>
+      <a class="settings-nav-item" href="#sec-5b">运行环境要求</a>
       <a class="settings-nav-item" href="#sec-6">账号与权限</a>
       <a class="settings-nav-item" href="#sec-7">使用方法</a>
       <a class="settings-nav-item" href="#sec-8">注意事项</a>
@@ -68,8 +69,34 @@
         </div>
       </section>
 
+      <section class="about-chapter" id="sec-5b">
+        <h2>五、运行环境要求</h2>
+        <p>本系统为单机桌面应用，对硬件要求较低。以下为<strong>最低配置</strong>与<strong>建议配置</strong>，供部署参考：</p>
+        <div class="perm-table-wrap">
+          <table class="perm-table spec-table">
+            <thead>
+              <tr><th>项目</th><th>最低配置</th><th>建议配置</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>操作系统</td><td>Windows 7 / 8 / 10 / 11（64 位）<br>Linux（amd64，如 Ubuntu 20.04+）<br>macOS 11（Big Sur）及以上</td><td>Windows 10 / 11（64 位）<br>Ubuntu 22.04 LTS<br>macOS 13 及以上</td></tr>
+              <tr><td>CPU</td><td>双核 1.5 GHz 及以上</td><td>四核 2.0 GHz 及以上</td></tr>
+              <tr><td>内存</td><td>2 GB</td><td>4 GB 及以上</td></tr>
+              <tr><td>硬盘空间</td><td>可用 500 MB（含数据与图片）</td><td>可用 2 GB 及以上</td></tr>
+              <tr><td>显示分辨率</td><td>1366 × 768</td><td>1920 × 1080 及以上</td></tr>
+              <tr><td>浏览器</td><td>Chrome / Edge / Firefox 近两个大版本</td><td>Chrome / Edge 最新稳定版</td></tr>
+              <tr><td>其他依赖</td><td>无需额外运行库；安装包已内置全部依赖</td><td>同左</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="notice-grid">
+          <div class="notice-item"><h3>① 数据规模</h3><p>台账与图片越多占用空间越大，建议定期在「导入导出」中归档与备份。</p></div>
+          <div class="notice-item"><h3>② 权限</h3><p>程序默认安装到 <code>D:\QmWorkLog</code>（若计算机无 D 盘，则自动改为 <code>C:\QmWorkLog</code>），运行时仅读写自身目录，无需管理员权限。</p></div>
+          <div class="notice-item"><h3>③ 网络</h3><p>系统为纯本地应用，无需联网即可使用；仅「更新与下载」「联系作者」等功能需访问外网。</p></div>
+        </div>
+      </section>
+
       <section class="about-chapter" id="sec-6">
-        <h2>五、账号与权限</h2>
+        <h2>六、账号与权限</h2>
         <p>系统区分 <strong>管理员（admin）</strong> 与 <strong>普通用户</strong> 两类角色，权限严格控制，保障数据安全。</p>
         <div class="perm-table-wrap">
           <table class="perm-table">
@@ -89,7 +116,7 @@
       </section>
 
       <section class="about-chapter" id="sec-7">
-        <h2>六、使用方法</h2>
+        <h2>七、使用方法</h2>
         <ol class="guide-steps">
           <li><strong>访问系统</strong>：浏览器打开系统地址，进入登录页后输入账号密码即可登录。</li>
           <li><strong>登录后台</strong>：默认账号 <code>admin / admin</code>（请在正式使用前修改密码）。</li>
@@ -101,7 +128,7 @@
       </section>
 
       <section class="about-chapter about-notice" id="sec-8">
-        <h2>七、注意事项</h2>
+        <h2>八、注意事项</h2>
         <div class="notice-grid">
           <div class="notice-item">
             <h3>① 数据备份</h3>
@@ -131,7 +158,7 @@
       </section>
 
       <section class="about-chapter about-license" id="sec-9">
-        <h2>八、开源许可</h2>
+        <h2>九、开源许可</h2>
         <p class="preface-p">本系统以 <strong>GNU General Public License v3.0（GPL v3）</strong> 协议开源发布。您可自由使用、复制、修改与分发本软件，但任何基于本软件的衍生作品<strong>必须以相同的 GPL v3 协议开源</strong>。</p>
         <p class="preface-p">许可核心条款（摘要）：</p>
         <ol class="guide-steps">
@@ -146,7 +173,7 @@
       </section>
 
       <section class="about-chapter about-update" id="sec-10">
-        <h2>九、更新与下载</h2>
+        <h2>十、更新与下载</h2>
         <p class="preface-p">本系统的后续版本均通过 GitHub 仓库发布与下载，地址如下：</p>
         <div class="update-box">
           <a class="update-link" href="https://github.com/djrolin2023/QmWorkLog" target="_blank" rel="noopener">
@@ -155,10 +182,27 @@
           </a>
         </div>
         <p class="preface-p"><strong>更新保护数据：</strong>下载更新时，仅覆盖程序代码与静态资源文件，<strong>不会更改或删除任何现有数据</strong>（数据库 <code>DB/</code>、台账文档 <code>Data/</code>、<code>users.json</code>、<code>config.json</code> 等）。重要变更前建议先通过「导入导出」执行整库备份。</p>
+
+        <h3 class="sub-h">从源码获取 / 拉取更新</h3>
+        <p class="preface-p">如果需要自行构建或从源码运行（如 Linux / macOS 未提供对应安装包时），可通过 Git 拉取仓库：</p>
+        <ol class="guide-steps">
+          <li><strong>获取源码</strong>：首次克隆仓库到本地
+            <br><code>git clone https://github.com/djrolin2023/QmWorkLog.git</code></li>
+          <li><strong>安装依赖</strong>：进入项目目录，使用 Python 3.10+ 创建虚拟环境并安装依赖
+            <br><code>python -m venv QmWorkLog-venv &amp;&amp; QmWorkLog-venv\Scripts\activate</code><br><code>pip install -r requirements.txt</code></li>
+          <li><strong>拉取更新</strong>：已克隆的情况下，进入目录执行
+            <br><code>git pull</code>
+            <br>即可获取最新源码；随后重新安装依赖（如有新增）并重新启动。</li>
+          <li><strong>启动服务</strong>：执行 <code>python app.py</code>，浏览器访问 <code>http://127.0.0.1:8088</code> 即可使用。</li>
+        </ol>
+        <div class="notice-grid">
+          <div class="notice-item"><h3>① 版本发布</h3><p>正式安装包（Windows / Linux / macOS）以 GitHub <strong>Releases</strong> 形式发布，源码更新则合入主分支。</p></div>
+          <div class="notice-item"><h3>② 数据保护</h3><p>源码更新同样只替换代码与静态资源，现有数据文件不会被覆盖或删除。</p></div>
+        </div>
       </section>
 
       <section class="about-chapter about-contact" id="sec-11">
-        <h2>十、联系作者</h2>
+        <h2>十一、联系作者</h2>
         <p class="preface-p">如对本系统有建议、问题反馈或合作意愿，欢迎通过以下方式联系作者。您的每一份反馈都是本系统持续完善的动力。</p>
         <div class="contact-qr">
           <figure class="qr-figure">

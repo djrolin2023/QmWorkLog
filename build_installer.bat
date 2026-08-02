@@ -18,10 +18,21 @@ if not exist "QmWorkLog-venv\Scripts\activate.bat" (
 )
 call QmWorkLog-venv\Scripts\activate.bat
 
+REM ---------- 读取版本号（来自 version.json） ----------
+for /f "delims=" %%i in ('python -c "import json;print(json.load(open('version.json',encoding='utf-8'))['version'])"') do set QM_VER=%%i
+if "%QM_VER%"=="" (
+    echo [错误] 无法从 version.json 读取版本号。
+    pause
+    exit /b 1
+)
+set QM_MAIN=QmWorkLog_v%QM_VER%
+set QM_SETUP=QmWorkLog_Setup_v%QM_VER%
+echo 当前版本： %QM_VER%
+
 REM ---------- 第一步：主程序 exe ----------
-echo [1/2] 正在打包主程序 QmWorkLog.exe ...
+echo [1/2] 正在打包主程序 %QM_MAIN%.exe ...
 pyinstaller --noconfirm --onefile --windowed ^
-    --name QmWorkLog ^
+    --name %QM_MAIN% ^
     --icon "static\Images\logo.ico" ^
     --add-data "static;static" ^
     --add-data "templates;templates" ^
@@ -36,16 +47,16 @@ if errorlevel 1 (
 )
 
 REM 主程序 exe 移到根目录
-if exist "QmWorkLog.exe" del /f /q "QmWorkLog.exe"
-move /y "dist\QmWorkLog.exe" "QmWorkLog.exe" >nul
+if exist "%QM_MAIN%.exe" del /f /q "%QM_MAIN%.exe"
+move /y "dist\%QM_MAIN%.exe" "%QM_MAIN%.exe" >nul
 
-REM ---------- 第二步：安装向导 exe ----------
-echo [2/2] 正在打包安装向导 QmWorkLog_Setup.exe ...
+REM ---------- 第二步：安装向导 exe（内嵌上面带版本号的主程序） ----------
+echo [2/2] 正在打包安装向导 %QM_SETUP%.exe ...
 pyinstaller --noconfirm --onefile --windowed ^
-    --name QmWorkLog_Setup ^
+    --name %QM_SETUP% ^
     --icon "static\Images\logo.ico" ^
     --add-data "LICENSE_INSTALL.txt;." ^
-    --add-binary "QmWorkLog.exe;." ^
+    --add-binary "%QM_MAIN%.exe;." ^
     --hidden-import PyQt5.QtWidgets --hidden-import PyQt5.QtCore --hidden-import PyQt5.QtGui ^
     installer.py
 if errorlevel 1 (
@@ -55,13 +66,13 @@ if errorlevel 1 (
 )
 
 REM 安装向导 exe 移到根目录
-if exist "QmWorkLog_Setup.exe" del /f /q "QmWorkLog_Setup.exe"
-move /y "dist\QmWorkLog_Setup.exe" "QmWorkLog_Setup.exe" >nul
+if exist "%QM_SETUP%.exe" del /f /q "%QM_SETUP%.exe"
+move /y "dist\%QM_SETUP%.exe" "%QM_SETUP%.exe" >nul
 
 echo.
 echo 打包完成：
-echo   主程序： %cd%\QmWorkLog.exe
-echo   安装包： %cd%\QmWorkLog_Setup.exe
+echo   主程序： %cd%\%QM_MAIN%.exe
+echo   安装包： %cd%\%QM_SETUP%.exe
 echo.
 pause
 endlocal
