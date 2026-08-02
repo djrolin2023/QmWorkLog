@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}乾明工作台账系统{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='Images/favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v=app_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v=app_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ledger.css', v=app_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css', v=app_version) }}">
+    <!-- 提前应用主题，避免浅/深色切换闪烁 -->
+    <script>try{var t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+</head>
+<body data-page="{% block page %}{% endblock %}">
+<div class="app">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+        <div class="brand">
+            <img class="brand-logo" src="{{ cfg.company_logo if cfg and cfg.company_logo else url_for('static', filename='Images/logo.svg') }}" alt="LOGO">
+            <div class="brand-text">
+                <strong>乾明工作台账系统</strong>
+            </div>
+        </div>
+        <nav class="menu">
+            <a class="menu-parent" data-page="dashboard" href="{{ url_for('dashboard') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M3 3h8v8H3zM13 3h8v5h-8zM13 11h8v10h-8zM3 13h8v8H3z"/></svg>数据大屏</a>
+            <a class="menu-parent" data-page="ledger" href="{{ url_for('ledger') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5zM9 3v5h7M8 12h8M8 16h8M8 20h5"/></svg>工作台账</a>
+            <a class="menu-parent" data-page="types" href="{{ url_for('types') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16M9 6v12M15 6v12"/></svg>台账管理</a>
+            <a class="menu-parent" data-page="summary" href="{{ url_for('summary') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4zM5 21a7 7 0 0 1 14 0"/></svg>智能总结</a>
+            <a class="menu-parent" data-page="archive" href="{{ url_for('archive') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M3 4h18v4H3zM5 8h14v12H5zM9 12h6"/></svg>归档管理</a>
+            <a class="menu-parent" data-page="impexp" href="{{ url_for('impexp') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M12 3v10M8 9l4 4 4-4M4 17v3h16v-3"/></svg>导入导出</a>
+            <a class="menu-parent" data-page="users" href="{{ url_for('users') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a6 6 0 0 1 12 0M16 11a3 3 0 0 0 0-6M15 14a6 6 0 0 1 6 6"/></svg>用户管理</a>
+            <a class="menu-parent" data-page="logs" href="{{ url_for('logs_page') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5zM9 3v5h7M8 13h8M8 17h6"/></svg>系统日志</a>
+            <a class="menu-parent" data-page="settings" href="{{ url_for('settings') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1l-.4-2.6H9.6L9.2 4a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .3 0 .7.1 1l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.6h4.8l.4-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6c.1-.3.1-.7.1-1z"/></svg>系统设置</a>
+            <a class="menu-parent" data-page="manual" href="{{ url_for('manual') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M4 4h11a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM4 4v14h12a2 2 0 0 0 2 2M8 8h7M8 12h7"/></svg>使用手册</a>
+            <a class="menu-parent" data-page="about" href="{{ url_for('about') }}"><svg class="menu-ico" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01"/></svg>关于系统</a>
+        </nav>
+        <div class="sidebar-foot">
+            <div class="sf-studio">乾明工作室</div>
+            <button class="sf-version" type="button" onclick="App.showVersionHistory()">V{{ cfg.version if cfg and cfg.version else '1.0.0' }}</button>
+        </div>
+    </aside>
+
+    <!-- 主区域 -->
+    <main class="main">
+        <div class="topbar">
+            <nav class="breadcrumb" id="breadcrumb"><span class="bc-item">首页</span></nav>
+            <div class="topbar-right">
+                <span class="tb-date" id="topbarDate"></span>
+                <button class="theme-btn tb-theme" data-theme-toggle type="button" onclick="Theme.toggle()">
+                    <span class="theme-dot"></span><span class="theme-label">深色模式</span>
+                </button>
+                <div class="user-menu" id="userMenu">
+                    <button class="um-trigger" type="button" onclick="App.toggleUserMenu()">
+                        <span class="tu-dot"></span><span class="tu-name">{{ user }}</span><span class="um-caret">▾</span>
+                    </button>
+                    <div class="um-dropdown" id="userDropdown">
+                        <a href="#" onclick="App.changePassword();return false;">修改密码</a>
+                        <a href="{{ url_for('logout') }}">退出登录</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="pageContent" class="page-content">
+        {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+
+<!-- 修改密码弹窗（全局） -->
+<div class="modal" id="pwdModal">
+    <div class="modal-box">
+        <div class="modal-head"><h3>修改密码</h3><button class="modal-close" onclick="App.closeModal('pwdModal')">×</button></div>
+        <form id="pwdForm" class="form-grid">
+            <label>原密码<input type="password" name="old" class="form-control" required></label>
+            <label>新密码<input type="password" name="new" class="form-control" required></label>
+            <label>确认新密码<input type="password" name="confirm" class="form-control" required></label>
+            <div class="form-actions"><button type="submit" class="btn btn-primary">保存</button></div>
+        </form>
+        <div id="pwdMsg" class="form-msg"></div>
+    </div>
+</div>
+
+<!-- 版本历史弹窗（全局） -->
+<div class="modal" id="verModal">
+    <div class="modal-box">
+        <div class="modal-head"><h3>版本历史</h3><button class="modal-close" onclick="App.closeModal('verModal')">×</button></div>
+        <div id="verList" class="ver-list"></div>
+    </div>
+</div>
+
+<!-- 通用确认弹窗（全局） -->
+<div class="modal" id="confirmModal">
+    <div class="modal-box modal-sm">
+        <div class="modal-head"><h3 id="confirmTitle">确认操作</h3><button class="modal-close" onclick="QM.closeModal('confirmModal')">×</button></div>
+        <p class="modal-text" id="confirmText"></p>
+        <div class="modal-actions">
+            <button class="btn" id="confirmCancel">取消</button>
+            <button class="btn btn-danger" id="confirmOk">确定</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/theme.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/core.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-dashboard.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-ledger.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-settings.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-users.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-types.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-about.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-archive.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-impexp.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-summary.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-logs.js', v=app_version) }}"></script>
+<script src="{{ url_for('static', filename='js/page-manual.js', v=app_version) }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

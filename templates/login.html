@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>乾明工作台账系统 - 登录</title>
+    <link rel="icon" href="{{ url_for('static', filename='Images/favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css', v=app_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v=app_version) }}">
+    <script>try{var t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}</script>
+    <script src="{{ url_for('static', filename='js/theme.js', v=app_version) }}"></script>
+</head>
+<body class="login-body">
+    <div class="login-wrap">
+     <div class="login-shell">
+        <!-- 左侧介绍面板 -->
+        <div class="login-left">
+            <div class="login-theme">
+                <button class="theme-btn" data-theme-toggle type="button" onclick="Theme.toggle()">
+                    <span class="theme-dot"></span><span class="theme-label">深色模式</span>
+                </button>
+            </div>
+            <div class="login-brand">
+                {% if cfg and cfg.company_logo %}
+                <img src="{{ cfg.company_logo }}" alt="LOGO">
+                {% else %}
+                <img src="{{ url_for('static', filename='Images/logo.svg') }}" alt="LOGO">
+                {% endif %}
+                <span class="lb-name">
+                    <strong>{{ (cfg.system_title if cfg else '乾明工作台账系统') }}</strong>
+                    <small>QianMing Work Log Management</small>
+                </span>
+            </div>
+            <div class="login-intro">
+                <h1>智能台账，轻松管理</h1>
+                <p>面向物业安保与消控场景的工作台账管理系统，支持台账录入、图片归档、智能总结、数据大屏与一键导入导出，让每日工作记录更高效、更规范。</p>
+            </div>
+            <div class="login-foot">
+                © 乾明工作室　版权所有<br>
+                技术支持：乾明
+            </div>
+        </div>
+
+        <!-- 右侧登录框 -->
+        <div class="login-right">
+            <div class="login-card">
+                <h1>{{ (cfg.system_title if cfg else '乾明工作台账系统') }}</h1>
+                {% if cfg and cfg.company_short_name %}
+                <p class="login-sub">{{ cfg.company_short_name }}{% if cfg.customer_name %}（{{ cfg.customer_name }}）{% endif %}</p>
+                {% endif %}
+                {% if error %}<div class="login-error">{{ error }}</div>{% endif %}
+                <form method="post" class="login-form" id="loginForm">
+                    <label>用户名
+                        <input type="text" name="username" id="username" placeholder="请输入用户名"
+                               autocomplete="username" autofocus required>
+                    </label>
+                    <label>密码
+                        <span class="pw-wrap">
+                            <input type="password" name="password" id="password" placeholder="请输入密码"
+                                   autocomplete="current-password" required>
+                            <button type="button" class="pw-toggle" id="pwToggle" aria-label="显示密码" title="显示/隐藏密码">
+                                <svg class="eye-icon" viewBox="0 0 24 24" id="eyeOpen">
+                                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                <svg class="eye-icon hidden" viewBox="0 0 24 24" id="eyeOff">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.4 18.4 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/>
+                                    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+                                </svg>
+                            </button>
+                        </span>
+                    </label>
+                    <label class="remember-row">
+                        <input type="checkbox" name="remember" id="remember">
+                        <span>记住账号</span>
+                    </label>
+                    <button type="submit" class="btn btn-primary login-btn">登 录</button>
+                </form>
+                <p class="login-foot-out">© 乾明工作台账系统　V{{ app_version }}</p>
+            </div>
+        </div>
+     </div>
+    </div>
+    <script>
+    (function () {
+      var userInput = document.getElementById('username');
+      var remember = document.getElementById('remember');
+      var pwInput = document.getElementById('password');
+      var pwToggle = document.getElementById('pwToggle');
+      var eyeOpen = document.getElementById('eyeOpen');
+      var eyeOff = document.getElementById('eyeOff');
+      var RM_KEY = 'qmw_remembered_user';
+      try {
+        var saved = localStorage.getItem(RM_KEY);
+        if (saved) { userInput.value = saved; remember.checked = true; }
+      } catch (e) {}
+      if (remember.checked && userInput.value) pwInput.focus();
+      else userInput.focus();
+      document.getElementById('loginForm').addEventListener('submit', function () {
+        try {
+          if (remember.checked) localStorage.setItem(RM_KEY, userInput.value);
+          else localStorage.removeItem(RM_KEY);
+        } catch (e) {}
+      });
+      pwToggle.addEventListener('click', function () {
+        var show = pwInput.type === 'password';
+        pwInput.type = show ? 'text' : 'password';
+        eyeOpen.classList.toggle('hidden', show);
+        eyeOff.classList.toggle('hidden', !show);
+        pwToggle.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
+        pwInput.focus();
+      });
+    })();
+    </script>
+</body>
+</html>

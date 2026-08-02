@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block page %}ledger{% endblock %}
+{% block title %}工作台账 - 乾明工作台账系统{% endblock %}
+{% block content %}
+<header class="page-head" id="ledgerHead">
+    <h1>工作台账</h1>
+    <div class="ph-actions">
+        <select id="typeSelect" class="form-control"></select>
+        <button id="btnBatchDelete" class="btn btn-danger" style="display:none">批量删除(<span id="selCount">0</span>)</button>
+        <button id="btnDeleteMonth" class="btn btn-danger-outline" style="display:none" title="删除当前所看月份的该类型全部台账">删除当月</button>
+        <button id="btnDeleteType" class="btn btn-danger-outline" style="display:none" title="删除该类型的全部台账（所有年份）">删除整类型</button>
+    </div>
+</header>
+
+<div class="ledger-layout">
+    <section class="card cal-card">
+        <div class="cal-nav">
+            <button class="cal-btn" id="prevMonth" title="上一月">‹</button>
+            <span class="cal-label" id="calLabel"></span>
+            <button class="cal-btn" id="nextMonth" title="下一月">›</button>
+            <button class="cal-btn cal-today" id="todayBtn">今天</button>
+            <span class="view-toggle">
+                <button class="vt-btn active" id="viewCal" data-view="cal">日历</button>
+                <button class="vt-btn" id="viewMonth" data-view="month">月历</button>
+            </span>
+        </div>
+        <div class="calendar" id="calendar"></div>
+        <div class="month-view" id="monthView" style="display:none"></div>
+        <p class="cal-tip" id="calTip">提示：日历视图下，按住 <kbd>Ctrl</kbd> 点击有台账的日期可多选删除；切到「月历」视图可多选整月批量删除。</p>
+        <div class="month-actions" id="monthActions" style="display:none">
+            <button id="btnDeleteMonths" class="btn btn-danger">批量删除选中月份(<span id="selMonthCount">0</span>)</button>
+            <button id="btnDeleteYearAll" class="btn btn-danger-outline" title="删除该年全部12个月的台账">删除整年</button>
+        </div>
+    </section>
+
+    <section class="detail-card" id="detailCard">
+        <div class="detail-placeholder" id="detailPlaceholder">
+            <div class="ph-icon">📅</div>
+            <p>请选择左侧日期<br>查看或编辑当日台账</p>
+        </div>
+        <!-- 未创建台账的日期：显示新建引导 -->
+        <div class="new-placeholder" id="newPlaceholder" style="display:none">
+            <div class="np-icon">➕</div>
+            <p>该日期尚未创建台账</p>
+            <button id="btnCreateNew" class="btn btn-primary">新建台账</button>
+        </div>
+        <!-- 台账内容（仿模板样式） -->
+        <div class="record-panel" id="recordPanel" style="display:none">
+    <div class="template-doc">
+        <div class="td-company-top" id="tdCompanyTop"></div>
+        <h2 class="td-title">工作台账</h2>
+        <div class="td-company" id="tdCompany"></div>
+        <table class="td-meta">
+            <tr><th>部门</th><td id="tdDept"></td><th>日期</th><td id="tdDate"></td></tr>
+        </table>
+        <div class="td-section">
+            <div class="td-label">工作内容</div>
+            <div class="td-content" id="tdContent"></div>
+        </div>
+        <div class="td-section">
+            <div class="td-label">工作图片</div>
+            <div class="td-images" id="tdImages"><span class="td-empty">（暂无图片）</span></div>
+        </div>
+        <div class="td-sign" id="tdSign"></div>
+    </div>
+    <div class="record-actions" id="recordActions">
+        <button id="btnEdit" class="btn btn-primary">编辑</button>
+        <button id="btnOpen" class="btn">打开</button>
+        <button id="btnDelete" class="btn btn-danger">删除</button>
+    </div>
+</div>
+
+<!-- 编辑台账（与模板样式一致，新建 / 编辑已保存台账通用） -->
+<div class="record-panel template-doc" id="editPanel" style="display:none">
+    <div class="rp-head">
+        <h3 class="rp-title" id="editTitle">编辑台账</h3>
+        <button id="btnBackEdit" class="rp-back" type="button" title="返回">← 返回</button>
+    </div>
+    <div class="td-company-top"></div>
+    <h2 class="td-title">工作台账</h2>
+    <div class="td-company" id="editCompany"></div>
+    <table class="td-meta">
+        <tr>
+            <th>部门</th>
+            <td><input type="text" id="editDept" class="td-edit-input"></td>
+            <th>日期</th>
+            <td><input type="date" id="editDate" class="td-edit-input"></td>
+        </tr>
+    </table>
+    <div class="td-section">
+        <div class="td-label">工作内容</div>
+        <textarea id="editContent" class="td-edit-content" placeholder="请输入当日工作内容…"></textarea>
+    </div>
+    <div class="td-section">
+        <div class="td-label">工作图片</div>
+        <div class="td-frames" id="editFrames"></div>
+    </div>
+    <div class="td-section">
+        <div class="td-label">签名</div>
+        <input type="text" id="editSign" class="td-edit-input td-edit-sign" placeholder="录入人签名">
+    </div>
+    <div class="record-actions">
+        <button id="btnSaveEdit" class="btn btn-primary">保存</button>
+        <button id="btnCancelEdit" class="btn">取消</button>
+    </div>
+</div>
+
+<!-- 未保存提醒弹窗 -->
+<div class="modal" id="unsavedModal">
+    <div class="modal-box">
+        <div class="modal-head"><h3>当前编辑未保存</h3><button class="modal-close" onclick="App.closeModal('unsavedModal')">×</button></div>
+        <p class="modal-text">您有尚未保存的修改，是否保存后再返回？</p>
+        <div class="form-actions">
+            <button class="btn btn-primary" id="btnUnsavedConfirm">确认</button>
+            <button class="btn" id="btnUnsavedCancel">取消</button>
+            <button class="btn btn-danger" id="btnUnsavedExit">退出</button>
+        </div>
+    </div>
+</div>
+    </div>
+</section>
+{% endblock %}

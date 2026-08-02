@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block page %}logs{% endblock %}
+{% block title %}系统日志 - 乾明工作台账系统{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>系统日志</h1>
+  <div class="log-filters">
+    <select id="logAction" class="form-control">
+      <option value="">全部操作</option>
+      <option value="登录">登录</option>
+      <option value="登出">登出</option>
+      <option value="新增台账">新增台账</option>
+      <option value="编辑台账">编辑台账</option>
+      <option value="删除台账">删除台账</option>
+      <option value="新增类型">新增类型</option>
+      <option value="重命名类型">重命名类型</option>
+      <option value="删除类型">删除类型</option>
+      <option value="导入">导入</option>
+      <option value="导出">导出</option>
+      <option value="备份恢复">备份恢复</option>
+      <option value="重建索引">重建索引</option>
+      <option value="新增用户">新增用户</option>
+      <option value="删除用户">删除用户</option>
+      <option value="重置密码">重置密码</option>
+      <option value="修改密码">修改密码</option>
+      <option value="系统设置">系统设置</option>
+      <option value="智能总结-免费">智能总结-免费</option>
+      <option value="智能总结-AI">智能总结-AI</option>
+    </select>
+    <label class="log-inline">开始<input type="date" id="logStart" class="form-control"></label>
+    <label class="log-inline">结束<input type="date" id="logEnd" class="form-control"></label>
+    <button id="logQuery" class="btn btn-primary">查询</button>
+    <button id="logDeleteRange" class="btn btn-danger-outline" title="按当前筛选条件删除（操作类型 + 起止日期）">删除所选</button>
+    <button id="logDeleteAll" class="btn btn-danger" title="清空全部系统日志">全部删除</button>
+    <span id="logCount" class="log-count"></span>
+  </div>
+</header>
+<div class="card">
+  <table class="log-table" id="logTable">
+    <thead>
+      <tr><th>时间</th><th>操作人</th><th>操作类型</th><th>对象</th><th>详情</th><th>IP</th></tr>
+    </thead>
+    <tbody id="logBody"></tbody>
+  </table>
+  <div class="log-empty" id="logEmpty" style="display:none">暂无日志记录</div>
+</div>
+{% endblock %}

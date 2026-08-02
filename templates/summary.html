@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block page %}summary{% endblock %}
+{% block title %}智能总结 - 乾明工作台账系统{% endblock %}
+{% block content %}
+<header class="page-head"><h1>智能总结</h1></header>
+
+<div class="card sum-control">
+    <div class="sum-check-row">
+        <div class="sum-types-box">
+            <div class="sum-types-label">选择台账类型（可多选）</div>
+            <div class="sum-types" id="sumTypes"></div>
+        </div>
+    </div>
+    <div class="sum-bar">
+        <label class="sum-inline">年份<input type="number" id="sumYear" class="form-control" value="2026"></label>
+        <select id="sumPeriod" class="form-control">
+            <option value="year">全年</option>
+            <option value="half1">上半年</option>
+            <option value="half2">下半年</option>
+            <option value="q1">第一季度</option>
+            <option value="q2">第二季度</option>
+            <option value="q3">第三季度</option>
+            <option value="q4">第四季度</option>
+            <option value="m1">1 月</option>
+            <option value="m2">2 月</option>
+            <option value="m3">3 月</option>
+            <option value="m4">4 月</option>
+            <option value="m5">5 月</option>
+            <option value="m6">6 月</option>
+            <option value="m7">7 月</option>
+            <option value="m8">8 月</option>
+            <option value="m9">9 月</option>
+            <option value="m10">10 月</option>
+            <option value="m11">11 月</option>
+            <option value="m12">12 月</option>
+            <option value="range">自定义范围</option>
+        </select>
+        <div class="sum-actions">
+            <button id="btnSumGen" class="btn btn-primary">生成本地总结</button>
+            <button id="btnSumAI" class="btn btn-ai">AI 生成总结</button>
+        </div>
+        <span class="sum-range" id="sumRangeWrap" style="display:none">
+            <input type="date" id="sumStart" class="form-control">
+            <span>至</span>
+            <input type="date" id="sumEnd" class="form-control">
+        </span>
+    </div>
+</div>
+
+<div class="card" id="sumResultCard" style="display:none">
+    <div class="sum-head">
+        <h3 id="sumTitle"></h3>
+        <button id="btnSumExport" class="btn">导出 Word</button>
+    </div>
+    <div class="sum-stats" id="sumStats"></div>
+    <div class="sum-body markdown-body" id="sumBody"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% endblock %}

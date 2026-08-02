@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block page %}impexp{% endblock %}
+{% block title %}导入导出 - 乾明工作台账系统{% endblock %}
+{% block content %}
+<header class="page-head"><h1>导入导出</h1></header>
+<div class="card">
+    <h2>导出</h2>
+    <div class="form-grid two">
+        <label>类型
+            <select id="expType" class="form-control"></select>
+        </label>
+        <label>年份
+            <input type="number" id="expYear" class="form-control" value="2026">
+        </label>
+    </div>
+    <div class="record-actions">
+        <button id="btnExportZip" class="btn btn-primary">导出台账压缩包</button>
+        <button id="btnExportYear" class="btn">导出年度总台账</button>
+        <button id="btnBackup" class="btn">备份全部数据</button>
+    </div>
+</div>
+<div class="card">
+    <h2>导入</h2>
+    <p class="hint">支持导入每日 / 月度台账 .docx 文件（按文件名自动识别类型与日期）。</p>
+    <div class="record-actions">
+        <button id="btnOpenImport" class="btn btn-primary">开始导入</button>
+    </div>
+</div>
+
+<!-- 导入模态框 -->
+<div id="importModal" class="modal">
+    <div class="modal-box import-modal-box">
+        <div class="modal-head">
+            <h3>导入台账</h3>
+            <button type="button" class="modal-close" id="btnCloseImport">&times;</button>
+        </div>
+        <div class="modal-body">
+            <label>目标类型
+                <select id="impType" class="form-control"></select>
+            </label>
+            <div id="impTypeHint" class="type-hint" hidden>
+                <span class="type-hint-text">暂无台账类型，</span>
+                <button type="button" id="btnAddType" class="link-btn">新增一个台账类型</button>
+            </div>
+            <label class="imp-file-label">选择文件（可多选 .docx）
+                <input type="file" id="impFile" accept=".docx" multiple>
+            </label>
+            <div id="impFileList" class="imp-file-list"></div>
+            <div class="import-progress-wrap" id="impProgressWrap" hidden>
+                <div class="import-progress-bar"><div class="import-progress-fill" id="impProgressFill"></div></div>
+                <div class="import-progress-text" id="impProgressText">0%</div>
+            </div>
+            <div id="impResult" class="imp-result" hidden></div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn" id="btnCancelImport">取消</button>
+            <button type="button" class="btn btn-primary" id="btnStartImport" disabled>开始导入</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block page %}about{% endblock %}
+{% block title %}关于系统 - 乾明工作台账系统{% endblock %}
+{% block content %}
+<section class="settings-wrap">
+  <div class="settings-page-head">
+    <h1>关于系统</h1>
+    <p>作者：乾明 · 由 乾明工作室 出品。了解本系统的由来、功能与使用方法，以及版权与技术支持信息。</p>
+  </div>
+
+  <div class="settings-layout about-layout">
+    <!-- 左侧章节导航 -->
+    <aside class="settings-nav about-nav">
+      <a class="settings-nav-item active" href="#sec-2">系统简介</a>
+      <a class="settings-nav-item" href="#sec-3">功能介绍</a>
+      <a class="settings-nav-item" href="#sec-4">系统特色</a>
+      <a class="settings-nav-item" href="#sec-5">技术栈</a>
+      <a class="settings-nav-item" href="#sec-9">账号与权限</a>
+      <a class="settings-nav-item" href="#sec-6">使用方法</a>
+      <a class="settings-nav-item" href="#sec-7">注意事项</a>
+      <a class="settings-nav-item" href="#sec-10">开源许可</a>
+      <a class="settings-nav-item" href="#sec-9">更新与下载</a>
+      <a class="settings-nav-item" href="#sec-8">联系作者</a>
+    </aside>
+
+    <!-- 右侧内容 -->
+    <div class="settings-panels about-panels">
+      <section class="about-chapter" id="sec-2">
+        <h2>一、系统简介</h2>
+        <p>
+          本系统是一套面向物业安保、消控等一线岗位的<strong>工作台账数字化管理</strong>工具，用于按类型与日期记录工作内容并上传现场图片，
+          支持智能年度 / 周期总结、数据可视化大屏、归档备份与多用户权限管理。所有数据均保存在本地 SQLite 数据库，不上传任何云端，
+          适合对数据隐私有要求的园区、校区、物业等场景。
+        </p>
+      </section>
+
+      <section class="about-chapter" id="sec-3">
+        <h2>二、功能介绍</h2>
+        <div class="feature-grid">
+          <div class="feature-card"><div class="fc-icon">账</div><h3>工作台账</h3><p>按类型与日期记录工作内容与现场图片，模板化录入，规范统一。</p></div>
+          <div class="feature-card"><div class="fc-icon">智</div><h3>智能总结</h3><p>一键生成年度、月度或自定义周期的智能工作总结与统计。</p></div>
+          <div class="feature-card"><div class="fc-icon">屏</div><h3>数据大屏</h3><p>各类型台账数量与趋势可视化，整体情况一目了然。</p></div>
+          <div class="feature-card"><div class="fc-icon">档</div><h3>归档管理</h3><p>按类型归档历史台账，支持下载与一键恢复，数据安全可控。</p></div>
+          <div class="feature-card"><div class="fc-icon">换</div><h3>导入导出</h3><p>支持整库备份、导入与按年 / 类型导出，方便交接与上报。</p></div>
+          <div class="feature-card"><div class="fc-icon">权</div><h3>用户管理</h3><p>多用户体系与密码管理，系统设置集中维护公司与品牌信息。</p></div>
+        </div>
+      </section>
+
+      <section class="about-chapter" id="sec-4">
+        <h2>三、系统特色</h2>
+        <div class="feature-grid">
+          <div class="feature-card"><div class="fc-icon">图</div><h3>图片留痕</h3><p>每条台账可上传现场图片，点击查看原图，工作过程有据可查。</p></div>
+          <div class="feature-card"><div class="fc-icon">AI</div><h3>智能总结</h3><p>基于台账内容自动生成年度 / 周期总结，支持多种总结视角。</p></div>
+          <div class="feature-card"><div class="fc-icon">屏</div><h3>可视化大屏</h3><p>打开即自动同步索引，环形占比、类型分布、月度趋势即时呈现。</p></div>
+          <div class="feature-card"><div class="fc-icon">档</div><h3>归档恢复</h3><p>历史台账按需归档，误删可一键从归档恢复，数据不丢失。</p></div>
+          <div class="feature-card"><div class="fc-icon">权</div><h3>权限可控</h3><p>管理员与普通用户分级，关键操作有日志可追溯。</p></div>
+          <div class="feature-card"><div class="fc-icon">锁</div><h3>数据私有</h3><p>数据全部本地存储，断网可用，隐私可控不上云。</p></div>
+        </div>
+      </section>
+
+      <section class="about-chapter" id="sec-5">
+        <h2>四、技术栈</h2>
+        <div class="feature-grid">
+          <div class="feature-card"><div class="fc-icon">🐍</div><h3>后端</h3><p>Python 3 + Flask（轻量级 Web 框架）</p></div>
+          <div class="feature-card"><div class="fc-icon">🗄️</div><h3>数据库</h3><p>SQLite（文件型数据库，免部署）</p></div>
+          <div class="feature-card"><div class="fc-icon">🎨</div><h3>前端</h3><p>原生 HTML + CSS + JavaScript（无前端框架，零构建）</p></div>
+          <div class="feature-card"><div class="fc-icon">📄</div><h3>办公集成</h3><p>python-docx（台账文档生成与打印）</p></div>
+        </div>
+      </section>
+
+      <section class="about-chapter" id="sec-9">
+        <h2>五、账号与权限</h2>
+        <p>系统区分 <strong>管理员（admin）</strong> 与 <strong>普通用户</strong> 两类角色，权限严格控制，保障数据安全。</p>
+        <div class="perm-table-wrap">
+          <table class="perm-table">
+            <thead>
+              <tr><th>功能</th><th>管理员</th><th>普通用户</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>录入 / 编辑台账、上传图片</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+              <tr><td>查看台账列表 / 数据大屏 / 系统日志</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+              <tr><td>修改本人资料与密码</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+              <tr><td>智能总结 / 归档 / 导入导出</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+              <tr><td>新增 / 删除账号、重置他人密码</td><td class="ok">✓</td><td class="no">✗</td></tr>
+              <tr><td>删除台账 / 日志、恢复数据、系统设置</td><td class="ok">✓</td><td class="no">✗</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="about-chapter" id="sec-6">
+        <h2>六、使用方法</h2>
+        <ol class="guide-steps">
+          <li><strong>访问系统</strong>：浏览器打开系统地址，进入登录页后输入账号密码即可登录。</li>
+          <li><strong>登录后台</strong>：默认账号 <code>admin / admin</code>（请在正式使用前修改密码）。</li>
+          <li><strong>录入台账</strong>：在"工作台账"中选择类型与日期，填写内容并上传现场图片后保存。</li>
+          <li><strong>智能总结</strong>：在"智能总结"中选择类型、年份与周期，一键生成总结报告。</li>
+          <li><strong>数据查看</strong>：通过"数据大屏"查看各类台账数量与趋势（打开即自动同步）。</li>
+          <li><strong>归档备份</strong>：在"归档管理 / 导入导出"中定期归档与备份数据。</li>
+        </ol>
+      </section>
+
+      <section class="about-chapter about-notice" id="sec-7">
+        <h2>七、注意事项</h2>
+        <div class="notice-grid">
+          <div class="notice-item">
+            <h3>① 数据备份</h3>
+            <p>请定期在「导入导出」中执行整库备份，重要数据建议异地留存，避免意外丢失。</p>
+          </div>
+          <div class="notice-item">
+            <h3>② 图片上传</h3>
+            <p>现场图片用于留痕，建议清晰、命名规范；单张过大将影响加载速度。</p>
+          </div>
+          <div class="notice-item">
+            <h3>③ 删除确认</h3>
+            <p>台账、日志等删除操作均有二次确认，批量 / 整类删除请谨慎，必要时先从归档恢复。</p>
+          </div>
+          <div class="notice-item">
+            <h3>④ 账号安全</h3>
+            <p>正式使用前请修改默认 <code>admin</code> 密码；普通用户权限受限，关键操作由管理员执行。</p>
+          </div>
+          <div class="notice-item">
+            <h3>⑤ 索引同步</h3>
+            <p>打开数据大屏时会自动同步文件系统索引，若台账文件被外部改动，刷新大屏即可更新。</p>
+          </div>
+          <div class="notice-item">
+            <h3>⑥ 浏览器缓存</h3>
+            <p>静态资源带版本号自动刷新；如遇样式异常，可强制刷新（Ctrl+F5）一次。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-chapter about-license" id="sec-10">
+        <h2>九、开源许可</h2>
+        <p class="preface-p">本系统以 <strong>GNU General Public License v3.0（GPL v3）</strong> 协议开源发布。您可自由使用、复制、修改与分发本软件，但任何基于本软件的衍生作品<strong>必须以相同的 GPL v3 协议开源</strong>。</p>
+        <p class="preface-p">许可核心条款（摘要）：</p>
+        <ol class="guide-steps">
+          <li>您可以出于任何目的运行本程序。</li>
+          <li>您可以自由研究并修改源代码以适配您的需要。</li>
+          <li>您可以分发原始或修改后的副本。</li>
+          <li>分发时<strong>必须</strong>附上完整源代码与 GPL v3 许可文本。</li>
+          <li>本程序按"现状"提供，不提供任何担保。</li>
+        </ol>
+        <p class="preface-p">完整许可文本见 <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">https://www.gnu.org/licenses/gpl-3.0.html</a>，或随附的 <code>LICENSE</code> 文件。</p>
+        <div class="license-badge">© 2026 乾明工作台账系统 · 基于 GPL-3.0 开源</div>
+      </section>
+
+      <section class="about-chapter about-update" id="sec-9">
+        <h2>十、更新与下载</h2>
+        <p class="preface-p">本系统的后续版本均通过 GitHub 仓库发布与下载，地址如下：</p>
+        <div class="update-box">
+          <a class="update-link" href="https://github.com/djrolin2023/QmWorkLog" target="_blank" rel="noopener">
+            <svg class="menu-ico" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.46-1.11-1.46-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.36 1.09 2.94.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>
+            github.com/djrolin2023/QmWorkLog
+          </a>
+        </div>
+        <p class="preface-p"><strong>更新保护数据：</strong>下载更新时，仅覆盖程序代码与静态资源文件，<strong>不会更改或删除任何现有数据</strong>（数据库 <code>DB/</code>、台账文档 <code>Data/</code>、<code>users.json</code>、<code>config.json</code> 等）。重要变更前建议先通过「导入导出」执行整库备份。</p>
+      </section>
+
+      <section class="about-chapter about-contact" id="sec-8">
+        <h2>十一、联系作者</h2>
+        <p class="preface-p">如对本系统有建议、问题反馈或合作意愿，欢迎通过以下方式联系作者。您的每一份反馈都是本系统持续完善的动力。</p>
+        <div class="contact-qr">
+          <figure class="qr-figure">
+            <img src="{{ url_for('static', filename='Images/wechat-qrcode.png') }}" alt="微信二维码" loading="lazy">
+            <figcaption>微信扫码</figcaption>
+          </figure>
+          <figure class="qr-figure">
+            <img src="{{ url_for('static', filename='Images/qq-qrcode.png') }}" alt="QQ 二维码" loading="lazy">
+            <figcaption>QQ 扫码</figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}

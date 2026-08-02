@@ -1,0 +1,161 @@
+/* 工作台账页面样式：日历 + 查看/编辑区 */
+/* 日历 fixed 在视口 left:256，宽360，右边缘 616；main 内容起点约视口 266，
+   故 ledger 需 padding-left ≈ 616+20-266 = 370，使内容紧贴日历右侧、消除中间留白 */
+.ledger-layout { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; margin-top: 16px; padding-left: 372px; }
+.cal-card, .detail-card { margin-bottom: 0; }
+/* 日历悬浮：固定在视口左侧（侧边栏右侧），顶部对齐到面包屑与标题之下、与右侧台账编辑框顶部同齐，始终可见（类似 Excel 冻结首行） */
+.cal-card {
+  position: fixed; top: 132px; left: 256px; width: 360px; z-index: 40;
+  background: var(--surface); border-radius: 10px; padding: 16px;
+  box-shadow: var(--shadow); border: 1px solid var(--border);
+}
+.calendar { max-width: none; margin-bottom: 0; }
+.cal-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.cal-nav .cal-label { flex: 1; text-align: center; font-size: 16px; font-weight: 600; color: var(--text); }
+.cal-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 15px; line-height: 1; }
+.cal-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.cal-today { font-size: 13px; }
+.detail-card { min-height: 200px; }
+.detail-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px; color: var(--text-3); text-align: center; gap: 10px; }
+.detail-placeholder .ph-icon { font-size: 44px; opacity: .5; }
+.new-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 240px; color: var(--text-3); text-align: center; gap: 10px; }
+.new-placeholder .np-icon { font-size: 44px; opacity: .6; color: var(--primary); }
+.new-placeholder p { margin: 0; font-size: 15px; }
+.detail-card .record-panel { margin-bottom: 0; }
+
+@media (max-width: 880px) {
+  .ledger-layout { grid-template-columns: 1fr; padding-left: 0; }
+  .cal-card { position: static; width: auto; left: auto; top: auto; margin-bottom: 16px; z-index: auto; }
+}
+
+.calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; max-width: none; margin-bottom: 12px; }
+.cal-h { text-align: center; font-weight: 600; color: var(--text-3); padding: 6px 0; font-size: 13px; }
+.cal-day {
+  position: relative;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 0; text-align: center;
+  cursor: pointer; color: var(--text); transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.cal-day.sel { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+.cal-day.sel::after { content: '✓'; position: absolute; top: 2px; right: 4px; font-size: 11px; }
+.cal-tip { flex-basis: auto; width: 100%; font-size: 12px; color: var(--text-3); margin: 12px 0 0; line-height: 1.6; }
+.cal-tip kbd { background: var(--surface-2, #eee); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+/* ledger 页头避开左侧悬浮日历，避免标题/按钮被遮挡 */
+#ledgerHead { padding-left: 372px; }
+.cal-day:hover { border-color: var(--primary); background: var(--surface-2); color: var(--primary); }
+.cal-day.has { background: var(--primary-soft-2); border-color: var(--primary); color: var(--chip-text); font-weight: 600; }
+.cal-day.has:hover { background: var(--primary); color: #fff; }
+.cal-day.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+.cal-empty { padding: 12px 0; }
+.cal-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); border-color: var(--primary); }
+
+/* 视图切换（日历/月历） */
+.view-toggle { margin-left: auto; display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.vt-btn { border: none; background: var(--surface); color: var(--text-2); padding: 5px 12px; cursor: pointer; font-size: 13px; }
+.vt-btn + .vt-btn { border-left: 1px solid var(--border); }
+.vt-btn.active { background: var(--primary); color: #fff; }
+
+/* 月历视图：年份12个月份网格 */
+.month-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.month-cell {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 6px; text-align: center;
+  cursor: pointer; color: var(--text-3); transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.month-cell.has { color: var(--text); border-color: var(--primary); background: var(--primary-soft-2); font-weight: 600; }
+.month-cell.has:hover { background: var(--primary); color: #fff; }
+.month-cell.sel { background: var(--danger); border-color: var(--danger); color: #fff; }
+.month-cell .mc-name { font-size: 15px; }
+.month-cell .mc-count { font-size: 11px; margin-top: 4px; opacity: .8; }
+.month-actions { display: flex; gap: 10px; margin-top: 4px; }
+
+.record-panel { background: var(--surface); border-radius: 10px; padding: 20px; box-shadow: var(--shadow); }
+
+/* 编辑态：台账编辑面板在右侧显示区域内居中、加宽 */
+.detail-card { display: flex; flex-direction: column; align-items: center; }
+body.edit-fullscreen #editPanel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 1400px;
+  min-height: calc(100vh - 140px);
+  margin: 0 auto;
+}
+body.edit-fullscreen #editPanel .rp-head { flex: 0 0 auto; }
+body.edit-fullscreen #editPanel .form-grid { flex: 0 0 auto; }
+body.edit-fullscreen #editPanel .block-label { flex: 0 0 auto; margin-top: 12px; }
+body.edit-fullscreen #editPanel #editContent {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 360px;
+  resize: none;
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+body.edit-fullscreen #editPanel .record-actions { flex: 0 0 auto; margin-top: 14px; }
+/* 编辑态：与模板样式一致的输入框/文本域 */
+.td-edit-input {
+  width: 100%; border: none; border-bottom: 1px solid var(--border-2); background: transparent;
+  font: inherit; color: var(--text); padding: 4px 2px; outline: none;
+}
+.td-edit-input:focus { border-bottom-color: var(--primary); }
+.td-meta .td-edit-input { text-align: center; }
+.td-edit-sign { max-width: 240px; margin-top: 2px; }
+.td-edit-content {
+  width: 100%; min-height: 360px; border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px; font: inherit; font-size: 15px; line-height: 1.7; color: var(--text);
+  background: var(--surface); resize: vertical; outline: none; box-sizing: border-box;
+}
+.td-edit-content:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); }
+body.edit-fullscreen #editPanel #editContent {
+  flex: 1 1 auto; min-height: 320px; resize: none; margin-top: 8px;
+}
+body.edit-fullscreen #editPanel .td-section { flex: 0 0 auto; }
+/* 编辑态：模板式 2×2 照片框，每框独立上传按钮 */
+.td-frames {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.td-frame {
+  position: relative; border: 1px dashed var(--border-2); border-radius: 6px;
+  aspect-ratio: 4 / 3; background: var(--surface-2); display: flex;
+  align-items: center; justify-content: center; overflow: hidden; padding: 6px;
+  box-sizing: border-box;
+}
+.td-frame img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; }
+.td-frame-placeholder {
+  color: var(--text-3); font-size: 13px; text-align: center; padding: 0 8px;
+}
+.td-frame-upload {
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  border: 1px solid var(--primary); background: var(--surface); color: var(--primary);
+  border-radius: 14px; padding: 4px 14px; font-size: 12px; cursor: pointer;
+  opacity: 0; transition: opacity .15s ease; white-space: nowrap;
+}
+.td-frame:hover .td-frame-upload { opacity: 1; }
+.template-doc { max-width: 720px; margin: 0 auto; }
+.td-title { text-align: center; font-size: 22px; margin: 6px 0; }
+.td-company { text-align: center; font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 12px; }
+.td-company-top { text-align: center; margin-bottom: 6px; }
+.td-company-top img { height: 56px; }
+.td-meta { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.td-meta th, .td-meta td { border: 1px solid var(--border-2); padding: 8px 10px; font-size: 13px; }
+.td-meta th { background: var(--surface-2); width: 70px; text-align: center; }
+.td-section { margin-bottom: 14px; }
+.td-label { font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.td-content { border: 1px solid var(--border); border-radius: 6px; padding: 12px; min-height: 80px; white-space: pre-wrap; line-height: 1.7; }
+.td-images { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.td-images img { width: 100%; border: 1px solid var(--border); border-radius: 6px; cursor: zoom-in; }
+.td-empty { color: var(--text-4); }
+.td-sign { text-align: right; color: var(--text-2); margin-top: 10px; white-space: pre-wrap; }
+.rp-title { margin: 0 0 14px; font-size: 16px; }
+.rp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.rp-head .rp-title { margin: 0; }
+.rp-back {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+  border-radius: 8px; padding: 6px 14px; cursor: pointer; font-size: 13px; transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+}
+.rp-back:hover { border-color: var(--primary); color: var(--primary); background: var(--surface-2); }
+.record-actions { margin-top: 16px; display: flex; gap: 10px; }
+/* 未保存提醒弹窗 */
+.modal-text { color: var(--text-2); font-size: 14px; line-height: 1.7; margin: 4px 0 16px; }

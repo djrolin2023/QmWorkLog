@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block page %}dashboard{% endblock %}
+{% block title %}数据大屏 - 乾明工作台账系统{% endblock %}
+{% block content %}
+<div class="dash">
+  <!-- 顶部 KPI 指标卡 -->
+  <div class="dash-kpis">
+    <div class="kpi kpi-total"><div class="kpi-val">{{ summary.total }}</div><div class="kpi-label">台账总数</div></div>
+    <div class="kpi kpi-month"><div class="kpi-val">{{ summary.month_new }}</div><div class="kpi-label">本月新增</div></div>
+    <div class="kpi kpi-week"><div class="kpi-val">{{ summary.week_new }}</div><div class="kpi-label">本周新增</div></div>
+    <div class="kpi kpi-today"><div class="kpi-val">{{ summary.today_new }}</div><div class="kpi-label">今日新增</div></div>
+    <div class="kpi kpi-type"><div class="kpi-val">{{ summary.type_count }}</div><div class="kpi-label">台账类型</div></div>
+  </div>
+
+  <!-- 第二行：三张等宽卡片 -->
+  <div class="dash-row">
+    <section class="card dash-card">
+      <h3 class="dash-title">本月 / 历史录入占比</h3>
+      <div class="donut-wrap">
+        <svg viewBox="0 0 120 120" class="donut" style="transform:rotate(-90deg)">
+          <circle cx="60" cy="60" r="50" class="donut-bg"/>
+          <circle cx="60" cy="60" r="50" class="donut-seg donut-seg-month" stroke-dasharray="{{ month_len }} {{ donut_c }}"/>
+          <circle cx="60" cy="60" r="50" class="donut-seg donut-seg-hist" stroke-dasharray="{{ other_len }} {{ donut_c }}" stroke-dashoffset="{{-month_len}}"/>
+        </svg>
+        <div class="donut-center">
+          <div class="donut-total">{{ summary.total }}</div>
+          <div class="donut-cap">台账总数</div>
+        </div>
+      </div>
+      <div class="donut-legend">
+        <span><i class="lg lg-month"></i>本月 {{ month_new }}</span>
+        <span><i class="lg lg-hist"></i>历史 {{ other }}</span>
+      </div>
+    </section>
+
+    <section class="card dash-card">
+      <h3 class="dash-title">各类型台账分布</h3>
+      <div class="bars">
+        {% for t in by_type %}
+        <div class="bar-row">
+          <span class="bar-label" title="{{ t.name }}">{{ t.name }}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:{{ (t.count / type_max * 100)|round(1) }}%"></div></div>
+          <span class="bar-val">{{ t.count }}</span>
+        </div>
+        {% else %}
+        <div class="empty">暂无数据</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card dash-card">
+      <h3 class="dash-title">最近录入动态</h3>
+      <ul class="recent-list">
+        {% for r in recent %}
+        <li class="recent-item">
+          <span class="recent-date">{{ r.date }}</span>
+          <span class="recent-tag">{{ r.type_name }}</span>
+          <span class="recent-content" title="{{ r.content }}">{{ r.content or '（无摘要）' }}</span>
+        </li>
+        {% else %}
+        <li class="empty">暂无录入动态</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <!-- 第三行：趋势宽卡片 -->
+  <div class="dash-row">
+    <section class="card dash-card dash-card-wide">
+      <h3 class="dash-title">近 12 个月录入趋势</h3>
+      <div class="trend">
+        {% for m in monthly %}
+        <div class="trend-col">
+          <div class="trend-bar" style="height:{{ (m.count / month_max * 100)|round(1) if month_max else 0 }}%">
+            <span class="trend-val">{{ m.count }}</span>
+          </div>
+          <div class="trend-label">{{ m.month[5:] }}月</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <div class="dash-foot">
+    <span class="dash-sync"><i class="sync-dot"></i>打开本页已自动同步索引，数据实时更新</span>
+  </div>
+</div>
+{% endblock %}

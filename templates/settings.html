@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block page %}settings{% endblock %}
+{% block title %}系统设置 - 乾明工作台账系统{% endblock %}
+{% block content %}
+<header class="page-head"><h1>系统设置</h1></header>
+<div class="settings-layout">
+    <nav class="settings-nav">
+        <button class="nav-btn active" data-panel="panel-company">公司设置</button>
+        <button class="nav-btn" data-panel="panel-pwd">密码修改</button>
+        <button class="nav-btn" data-panel="panel-ai">AI 配置</button>
+    </nav>
+    <div class="settings-body">
+        <!-- 公司设置 -->
+        <div class="panel active" id="panel-company">
+            <div class="card">
+                <h2>公司设置</h2>
+                <form id="companyForm" class="form-grid">
+                    <label>公司简称
+                        <input name="company_short_name" id="coShort" class="form-control" required>
+                    </label>
+                    <label>客户名称
+                        <input name="customer_name" id="coCust" class="form-control">
+                    </label>
+                    <div class="logo-row">
+                        <span class="logo-label">公司 LOGO</span>
+                        <div class="logo-preview" id="logoPreview"></div>
+                        <input type="file" name="logo" id="coLogo" accept="image/*">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存设置</button>
+                        <span id="companyMsg" class="form-msg"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- 密码修改 -->
+        <div class="panel" id="panel-pwd">
+            <div class="card">
+                <h2>密码修改</h2>
+                <form id="pwdFormInline" class="form-grid">
+                    <label>原密码<input type="password" name="old" class="form-control" required></label>
+                    <label>新密码<input type="password" name="new" class="form-control" required></label>
+                    <label>确认新密码<input type="password" name="confirm" class="form-control" required></label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <span id="pwdMsgInline" class="form-msg"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- AI 配置 -->
+        <div class="panel" id="panel-ai">
+            <div class="card">
+                <h2>AI 配置（用于 AI 生成智能总结）</h2>
+                <div class="ai-guide">
+                    <p><strong>如何使用免费 AI 生成总结？</strong></p>
+                    <ol>
+                        <li>选择一个免费的兼容 OpenAI 接口的平台（推荐 <a href="https://cloud.siliconflow.cn/" target="_blank" rel="noopener">硅基流动 SiliconFlow</a>、<a href="https://platform.deepseek.com/" target="_blank" rel="noopener">DeepSeek</a>）。</li>
+                        <li>注册账号 → 进入「API 密钥」页面 → 创建新密钥并复制。</li>
+                        <li>将<strong>接口地址</strong>与<strong>API Key</strong>填入下方，点击「拉取模型」自动获取可用模型。</li>
+                        <li>保存后，在「智能总结 / 数据大屏」中点击「AI 生成总结」即可。</li>
+                    </ol>
+                    <p class="ai-tip">提示：免费模型通常额度有限，仅用于生成总结文本；免费 AI 总结（无需 Key）可零成本随时使用。</p>
+                </div>
+                <form id="aiForm" class="form-grid">
+                    <label>服务商
+                        <select id="aiProvider" class="form-control">
+                            <option value="siliconflow">硅基流动 SiliconFlow（推荐）</option>
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="openai">OpenAI 兼容</option>
+                        </select>
+                    </label>
+                    <label>接口地址 Base URL
+                        <input id="aiBaseUrl" class="form-control" placeholder="https://api.siliconflow.cn/v1">
+                    </label>
+                    <label>API Key
+                        <input id="aiKey" type="password" class="form-control" placeholder="粘贴你的 API Key" autocomplete="off">
+                    </label>
+                    <label>模型
+                        <div class="ai-model-row">
+                            <select id="aiModel" class="form-control"></select>
+                            <button type="button" class="btn" id="btnFetchModels">拉取模型</button>
+                        </div>
+                    </label>
+                    <div class="ai-model-desc" id="aiModelDesc"></div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">保存 AI 配置</button>
+                        <span id="aiMsg" class="form-msg"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% endblock %}

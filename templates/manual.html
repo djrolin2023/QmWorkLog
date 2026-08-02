@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block page %}manual{% endblock %}
+{% block title %}使用手册 - 乾明工作台账系统{% endblock %}
+{% block content %}
+<section class="settings-wrap">
+  <div class="settings-page-head">
+    <h1>使用手册</h1>
+    <p>本手册帮助用户快速掌握乾明工作台账系统的各项功能，从登录、录入台账到智能总结、归档备份，按章节对照查阅即可上手。</p>
+  </div>
+
+  <div class="settings-layout about-layout">
+    <!-- 左侧章节导航 -->
+    <aside class="settings-nav about-nav">
+      <a class="settings-nav-item active" href="#sec-1">登录与基本操作</a>
+      <a class="settings-nav-item" href="#sec-2">工作台账录入</a>
+      <a class="settings-nav-item" href="#sec-3">台账管理</a>
+      <a class="settings-nav-item" href="#sec-4">智能总结</a>
+      <a class="settings-nav-item" href="#sec-5">数据大屏</a>
+      <a class="settings-nav-item" href="#sec-6">归档管理</a>
+      <a class="settings-nav-item" href="#sec-7">导入导出</a>
+      <a class="settings-nav-item" href="#sec-8">用户与权限</a>
+      <a class="settings-nav-item" href="#sec-9">系统设置</a>
+      <a class="settings-nav-item" href="#sec-10">常见问题</a>
+    </aside>
+
+    <!-- 右侧内容 -->
+    <div class="settings-panels about-panels">
+      <section class="about-chapter" id="sec-1">
+        <h2>一、登录与基本操作</h2>
+        <ol class="guide-steps">
+          <li><strong>打开系统</strong>：在浏览器输入系统地址（局域网或外网地址）进入登录页。</li>
+          <li><strong>账号登录</strong>：输入账号与密码。默认管理员账号 <code>admin / admin</code>，<b>首次使用请务必修改密码</b>。</li>
+          <li><strong>记住账号</strong>：勾选"记住账号"可缓存用户名，密码不会明文保存。</li>
+          <li><strong>退出登录</strong>：点击右上角用户名 → "退出登录"。</li>
+          <li><strong>切换主题</strong>：右上角"深色模式"按钮可在浅色 / 深色主题间切换，偏好会被记住。</li>
+        </ol>
+      </section>
+
+      <section class="about-chapter" id="sec-2">
+        <h2>二、工作台账录入</h2>
+        <p>台账是系统的核心数据，按"类型 + 日期"组织一条工作记录。</p>
+        <ol class="guide-steps">
+          <li>在左侧菜单点击<strong>「工作台账」</strong>，进入台账页。</li>
+          <li>选择<strong>台账类型</strong>（如安保巡查、设备维护等，类型在「台账管理」中维护）。</li>
+          <li>选择<strong>日期</strong>，填写工作内容。</li>
+          <li>点击<strong>上传图片</strong>添加现场照片，支持多张；点击图片可查看原图。</li>
+          <li>点击<strong>保存</strong>提交。同一类型同一天可追加多条记录。</li>
+        </ol>
+        <div class="notice-grid">
+          <div class="notice-item"><h3>小贴士</h3><p>图片用于留痕，建议清晰、命名规范；单张过大将影响加载速度。</p></div>
+        </div>
+      </section>
+
+      <section class="about-chapter" id="sec-3">
+        <h2>三、台账管理</h2>
+        <p>在<strong>「台账管理」</strong>中维护台账类型（如新增"消防演练""访客登记"等）。</p>
+        <ol class="guide-steps">
+          <li>点击<strong>新增类型</strong>，填写类型名称与说明。</li>
+          <li>可对已有类型进行<strong>编辑 / 删除</strong>；删除类型不会删除其历史台账（可归档恢复）。</li>
+          <li>导入导出时若缺少对应类型，系统会给出引导并自动创建。</li>
+        </ol>
+      </section>
+
+      <section class="about-chapter" id="sec-4">
+        <h2>四、智能总结</h2>
+        <p>基于台账内容自动生成周期总结，减少手工汇总工作量。</p>
+        <ol class="guide-steps">
+          <li>进入<strong>「智能总结」</strong>，选择类型、年份与周期（年度 / 月度 / 自定义）。</li>
+          <li>点击<strong>生成总结</strong>，系统读取该周期内的台账生成报告。</li>
+          <li>支持多种总结视角，可复制文本用于上报或存档。</li>
+        </ol>
+      </section>
+
+      <section class="about-chapter" id="sec-5">
+        <h2>五、数据大屏</h2>
+        <p><strong>「数据大屏」</strong>以可视化方式呈现整体情况，打开即自动同步索引。</p>
+        <ol class="guide-steps">
+          <li>环形占比：各类型台账占比一目了然。</li>
+          <li>类型分布：不同维度的数量统计。</li>
+          <li>月度趋势：台账数量随时间的变化曲线。</li>
+          <li>若台账文件被外部改动，<strong>刷新大屏</strong>即可更新索引。</li>
+        </ol>
+      </section>
+
+      <section class="about-chapter" id="sec-6">
+        <h2>六、归档管理</h2>
+        <p>对历史台账按需归档，便于长期保存与恢复。</p>
+        <ol class="guide-steps">
+          <li>在<strong>「归档管理」</strong>中选择类型与年份执行归档。</li>
+          <li>归档后可<strong>下载</strong>归档文件留存。</li>
+          <li>误删的台账可<strong>一键从归档恢复</strong>，数据不丢失。</li>
+        </ol>
+      </section>
+
+      <section class="about-chapter" id="sec-7">
+        <h2>七、导入导出</h2>
+        <p>用于数据备份、交接与上报。</p>
+        <ol class="guide-steps">
+          <li><strong>整库备份</strong>：导出完整数据库文件，建议定期执行并异地留存。</li>
+          <li><strong>导入</strong>：选择备份文件恢复到系统（导入前请确认版本兼容）。</li>
+          <li><strong>按年 / 类型导出</strong>：用于局部数据上报。</li>
+        </ol>
+        <div class="notice-grid">
+          <div class="notice-item"><h3>⚠ 警告</h3><p>导入会覆盖或合并数据，操作前请先整库备份。</p></div>
+        </div>
+      </section>
+
+      <section class="about-chapter" id="sec-8">
+        <h2>八、用户与权限</h2>
+        <p>系统分<strong>管理员</strong>与<strong>普通用户</strong>两类角色。</p>
+        <div class="perm-table-wrap">
+          <table class="perm-table">
+            <thead><tr><th>功能</th><th>管理员</th><th>普通用户</th></tr></thead>
+            <tbody>
+              <tr><td>录入 / 编辑台账、上传图片</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+              <tr><td>查看台账 / 大屏 / 日志</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+              <tr><td>智能总结 / 归档 / 导入导出</td><td class="ok">✓</td><td class="ok">✓</td></tr>
+              <tr><td>新增 / 删除账号、重置他人密码</td><td class="ok">✓</td><td class="no">✗</td></tr>
+              <tr><td>删除台账 / 日志、恢复数据、系统设置</td><td class="ok">✓</td><td class="no">✗</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>在<strong>「用户管理」</strong>中由管理员维护账号、重置密码与权限。</p>
+      </section>
+
+      <section class="about-chapter" id="sec-9">
+        <h2>九、系统设置</h2>
+        <p>集中维护公司与品牌信息、基础参数。</p>
+        <ol class="guide-steps">
+          <li>进入<strong>「系统设置」</strong>，修改公司名称、LOGO 等展示信息。</li>
+          <li>设置会即时生效，影响打印模板与导出文档的页眉页脚。</li>
+        </ol>
+      </section>
+
+      <section class="about-chapter about-notice" id="sec-10">
+        <h2>十、常见问题</h2>
+        <div class="notice-grid">
+          <div class="notice-item"><h3>① 打不开系统</h3><p>确认服务已启动；检查浏览器地址与端口是否正确（默认 8088）。</p></div>
+          <div class="notice-item"><h3>② 样式错乱</h3><p>强制刷新（Ctrl+F5）一次；静态资源带版本号会自动更新。</p></div>
+          <div class="notice-item"><h3>③ 忘记密码</h3><p>联系管理员在「用户管理」中重置密码。</p></div>
+          <div class="notice-item"><h3>④ 数据异常</h3><p>先从「导入导出」恢复最近备份；必要时从「归档管理」恢复。</p></div>
+          <div class="notice-item"><h3>⑤ 大屏不更新</h3><p>刷新数据大屏页面，重新同步文件系统索引。</p></div>
+          <div class="notice-item"><h3>⑥ 数据安全</h3><p>所有数据本地存储、不上云；请定期整库备份。</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+{% endblock %}
