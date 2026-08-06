@@ -22,6 +22,7 @@ import warnings
 import system_info
 from flask_host import FlaskHost
 import install_utils as iu
+import updater
 
 warnings.filterwarnings("ignore", message=".*sipPyTypeDict.*")
 
@@ -456,6 +457,8 @@ class MainWindow(QMainWindow):
         self._set_running(False)
         self.start_service()
         QTimer.singleShot(1500, self.open_system)  # 等服务起来后再开页面
+        # 启动后延迟静默检查更新（仅发现新版本时弹窗，网络异常不提示）
+        QTimer.singleShot(8000, lambda: self.on_check_update(silent=True))
 
     # ---------------- UI 构建 ----------------
     def _build_ui(self):
@@ -648,9 +651,15 @@ class MainWindow(QMainWindow):
         self.btn_restart.clicked.connect(self.restart_service)
         self.btn_toggle.clicked.connect(self.toggle_service)
         self.btn_exit.clicked.connect(self.confirm_exit)
+        self.btn_check_update = QPushButton("检查更新")
+        self.btn_check_update.setFixedSize(120, 42)
+        self.btn_check_update.setCursor(Qt.PointingHandCursor)
+        self.btn_check_update.clicked.connect(self.on_check_update)
         btn_row.addWidget(self.btn_toggle)
         btn_row.addSpacing(10)
         btn_row.addWidget(self.btn_restart)
+        btn_row.addSpacing(10)
+        btn_row.addWidget(self.btn_check_update)
         btn_row.addSpacing(10)
         btn_row.addWidget(self.btn_exit)
         root.addLayout(btn_row)
@@ -922,6 +931,103 @@ class MainWindow(QMainWindow):
         if self.worker:
             self.worker.stop()
         QApplication.quit()
+
+    # ---------------- 更新检查 ----------------
+    def _set_update_btn_busy(self, busy):
+        """切换「检查更新」按钮的忙碌/可用状态与文案，避免重复点击。"""
+        self.btn_check_update.setEnabled(not busy)
+        self.btn_check_update.setText("检查中…" if busy else "检查更新")
+
+    def on_check_update(self, silent=False):
+        """手动/静默检查更新。
+
+        silent=True 用于启动后后台静默检查，仅在「发现新版本」时弹窗，
+        其余（已是最新 / 网络异常）一律静默。
+        手动点击（silent=False）时，已是最新也给出提示。
+        """
+        if not getattr(sys, "frozen", False):
+            if not silent:
+                QMessageBox.information(
+                    self, "提示",
+                    "当前为开发模式（脚本运行），无需检查更新。\n"
+                    "打包为可执行文件后即可使用此功能。")
+            return
+        self._set_update_btn_busy(True)
+
+        def _worker():
+            try:
+                res = updater.check_update()
+            except Exception as e:
+                res = {"error": str(e)}
+            # 切回主线程处理结果
+            QTimer.singleShot(0, lambda: self._on_update_result(res, silent))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_update_result(self, res, silent):
+        """处理更新检查结果（运行在主线程）。"""
+        self._set_update_btn_busy(False)
+        err = res.get("error")
+        if err:
+            if not silent:
+                QMessageBox.warning(self, "检查失败", err)
+            return
+        if not res.get("has_update"):
+            if not silent:
+                QMessageBox.information(
+                    self, "已是最新",
+                    f"当前已是最新版本：V{res.get('current')}")
+            return
+
+        # 发现新版本：弹窗询问是否更新
+        body = res.get("body", "").strip()
+        info = (f"发现新版本：V{res.get('latest')}\n"
+                f"当前版本：V{res.get('current')}")
+        if body:
+            info += f"\n\n更新说明：\n{body}"
+        reply = QMessageBox.question(
+            self, "发现新版本",
+            info + "\n\n是否立即下载并安装更新？",
+            QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Ok)
+        if reply != QMessageBox.Ok:
+            return
+        self._do_update(res)
+
+    def _do_update(self, res):
+        """下载并安装更新（后台线程 + 进度弹窗）。"""
+        self.btn_check_update.setEnabled(False)
+        self.btn_check_update.setText("更新中…")
+
+        # 进度对话框
+        from PyQt5.QtWidgets import QProgressDialog
+        prog = QProgressDialog("正在下载更新…", "取消", 0, 100, self)
+        prog.setWindowTitle("更新中")
+        prog.setMinimumDuration(0)
+        prog.setValue(0)
+        prog.setCancelButton(None)  # 不允许中途取消（下载中途取消会损坏）
+        prog.show()
+
+        def _progress(done, total):
+            pct = int(done * 100 / total) if total else 0
+            QTimer.singleShot(0, lambda: (prog.setValue(pct),
+                                          prog.setLabelText(
+                                              f"正在下载更新… {pct}%")))
+
+        def _worker():
+            ok, msg = updater.download_and_install(
+                res["download_url"], res["latest"], progress_cb=_progress)
+            if not ok:
+                QTimer.singleShot(0, lambda: (prog.close(),
+                                              self._on_update_failed(msg)))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_update_failed(self, msg):
+        self.btn_check_update.setEnabled(True)
+        self.btn_check_update.setText("检查更新")
+        QMessageBox.warning(
+            self, "更新失败",
+            f"{msg}\n\n请稍后重试，或前往 GitHub 手动下载最新版本。")
 
     # ---------------- 信息刷新 ----------------
     def _update_info(self, data):
